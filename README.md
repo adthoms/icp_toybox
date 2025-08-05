@@ -18,12 +18,17 @@ This repository implements ICP, Point-to-Plane ICP, and G-ICP algorithms using d
 
 ## Install
 
+### Packages
+
+Apt Packages
 ```bash
-# Apt Packages
 sudo apt install build-essential
 sudo apt-get install libatlas-base-dev libeigen3-dev libsuitesparse-dev
+```
 
-# CMake (https://apt.kitware.com/)
+[CMake](https://apt.kitware.com/)
+
+```bash
 sudo apt-get update
 sudo apt-get install ca-certificates gpg wget
 test -f /usr/share/doc/kitware-archive-keyring/copyright || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
@@ -34,8 +39,19 @@ sudo apt-get install kitware-archive-keyring
 echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal-rc main' | sudo tee -a /etc/apt/sources.list.d/kitware.list >/dev/null
 sudo apt-get update
 sudo apt install cmake=3.27.7-0kitware1ubuntu20.04.1 cmake-data=3.27.7-0kitware1ubuntu20.04.1 # CMake>=3.26 required
+```
 
-# Gflags (https://github.com/gflags/gflags/blob/master/INSTALL.md#compiling-the-source-code-with-cmake)
+### Libraries
+
+To install the following libraries (from source), create the following directory
+```bash
+cd && mkdir -p ~/Software
+```
+
+[Gflags](https://github.com/gflags/gflags/blob/master/INSTALL.md#compiling-the-source-code-with-cmake)
+
+```bash
+cd ~/Software
 git clone --depth 1 --branch v2.2.2 git@github.com:gflags/gflags.git
 cd gflags
 mkdir -p build && cd build
@@ -46,8 +62,12 @@ cmake -DCMAKE_CXX_STANDARD=17 \
       -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
 sudo make install
+```
 
-# Glog (https://google.github.io/glog/stable/build/#cmake)
+[Glog](https://google.github.io/glog/stable/build/#cmake)
+
+```bash
+cd ~/Software
 git clone --depth 1 --branch v0.6.0 git@github.com:google/glog.git
 cd glog
 cmake -S . -B build \
@@ -58,9 +78,12 @@ cmake -S . -B build \
       -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 sudo cmake --build build --target install
+```
 
-# Ceres (http://ceres-solver.org/installation.html#linux)
-cd ~/Downloads
+[Ceres](http://ceres-solver.org/installation.html#linux)
+
+```bash
+cd ~/Software
 wget http://ceres-solver.org/ceres-solver-2.2.0.tar.gz && tar zxf ceres-solver-2.2.0.tar.gz
 cd ceres-solver-2.2.0
 mkdir -p build && cd build
@@ -72,8 +95,12 @@ cmake -DUSE_CUDA=OFF \
       -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
 sudo make install
+```
 
-# Open 3D (https://www.open3d.org/docs/release/compilation.html)
+[Open 3D](https://www.open3d.org/docs/release/compilation.html)
+
+```bash
+cd ~/Software
 git clone --depth 1 --branch v0.17.0 https://github.com/isl-org/Open3D
 cd Open3d && ./util/install_deps_ubuntu.sh
 mkdir -p build && cd build
