@@ -3,16 +3,18 @@
 
 #include <memory>
 
-#include <open3d/Open3D.h>
 #include <Eigen/Dense>
+#include <open3d/Open3D.h>
+#include <open3d/geometry/PointCloud.h>
+#include <open3d/geometry/KDTreeFlann.h>
 
 #include "ICP/ceres_optimizer.hpp"
 
 class ICP_BASE {
 public:
-  using PointCloud = typename open3d::geometry::PointCloud;
+  using PointCloud = open3d::geometry::PointCloud;
   using PointCloudPtr = typename std::shared_ptr<PointCloud>;
-  using KDTree = typename open3d::geometry::KDTreeFlann;
+  using KDTree = open3d::geometry::KDTreeFlann;
   using KDTreePtr = typename std::shared_ptr<KDTree>;
 
   enum class SolverType { SVD, LeastSquares, LeastSquaresUsingCeres };

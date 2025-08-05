@@ -1,89 +1,82 @@
 cmake_minimum_required(VERSION 3.26)
+project(icp_toybox)
 
-set(PROJECT_NAME ICP_IMPLEMENTATION)
-project(${PROJECT_NAME} LANGUAGES CXX)
-
+# Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUITED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Set build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type (default Release)" FORCE)
 endif()
 message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
+# Compiler flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -DNDEBUG")
 
-include(Dependency.cmake)
-add_subdirectory(modules)
+# Find required packages
+find_package(gflags 2.2.2 REQUIRED)
+find_package(glog 0.6.0 REQUIRED)
+find_package(Ceres 2.2.0 REQUIRED)
+find_package(Eigen3 3.3.7 REQUIRED)
+find_package(Open3D 0.17.0 REQUIRED)
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+else()
+  message(FATAL_ERROR "OpenMP could not be found.")
+endif()
 
-set(CLOUD_PATH_1 ${CMAKE_CURRENT_SOURCE_DIR}/resources/0000000240.bin)
-set(CLOUD_PATH_2 ${CMAKE_CURRENT_SOURCE_DIR}/resources/0000000250.bin)
-set(CLOUD_PATH_3 ${CMAKE_CURRENT_SOURCE_DIR}/resources/0000000260.bin)
+# Fetch CLI11 library
+include(FetchContent)
+FetchContent_Declare(
+    cli11_lib
+    QUIET
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_TAG v2.3.2
+)
+FetchContent_MakeAvailable(cli11_lib)
 
-# ICP example
+# Include directories
+include_directories(
+    include
+    ${EIGEN3_INCLUDE_DIRS}
+    ${Open3D_INCLUDE_DIRS}
+)
+
+# Define source files
+set(ICP_SOURCES
+    src/icp_base.cpp
+    src/icp.cpp
+    src/icp_plane.cpp
+    src/gicp.cpp
+    src/ceres_optimizer.cpp
+    src/utils.cpp
+)
+
+# Create ICP library
+add_library(${PROJECT_NAME} ${ICP_SOURCES})
+
+# Link libraries to the main library
+target_link_libraries(${PROJECT_NAME}
+    ${Open3D_LIBRARIES}
+    Ceres::ceres
+)
+
+# Build examples
 add_executable(icp_example examples/icp_example.cpp)
-if(NOT ${DEP_LIST} STREQUAL "")
-    add_dependencies(icp_example 
-        ${DEP_LIST}
-    )
-endif()
-target_include_directories(icp_example PUBLIC
-    ${DEP_INCLUDE_DIR}
-)
-target_link_directories(icp_example PRIVATE
-    ${DEP_LIBS_DIR}
-)
-target_link_libraries(icp_example PUBLIC
-    ${DEP_LIBS}
-    ICP
-)
-target_compile_definitions(icp_example PRIVATE
-    SOURCE_CLOUD_PATH="${CLOUD_PATH_1}"
-    TARGET_CLOUD_PATH="${CLOUD_PATH_2}"
+target_link_libraries(icp_example PRIVATE
+    ${PROJECT_NAME}
+    CLI11::CLI11
 )
 
-# point to plane ICP example
-add_executable(icp_plane_example examples/icp_plane_example.cpp)
-if(NOT ${DEP_LIST} STREQUAL "")
-    add_dependencies(icp_plane_example 
-        ${DEP_LIST}
-    )
-endif()
-target_include_directories(icp_plane_example PUBLIC
-    ${DEP_INCLUDE_DIR}
-)
-target_link_directories(icp_plane_example PRIVATE
-    ${DEP_LIBS_DIR}
-)
-target_link_libraries(icp_plane_example PUBLIC
-    ${DEP_LIBS}
-    ICP
-)
-target_compile_definitions(icp_plane_example PRIVATE
-    SOURCE_CLOUD_PATH="${CLOUD_PATH_1}"
-    TARGET_CLOUD_PATH="${CLOUD_PATH_2}"
-)
-
-# GICP example
-add_executable(gicp_example examples/gicp_example.cpp)
-if(NOT ${DEP_LIST} STREQUAL "")
-    add_dependencies(gicp_example 
-        ${DEP_LIST}
-    )
-endif()
-target_include_directories(gicp_example PUBLIC
-    ${DEP_INCLUDE_DIR}
-)
-target_link_directories(gicp_example PRIVATE
-    ${DEP_LIBS_DIR}
-)
-target_link_libraries(gicp_example PUBLIC
-    ${DEP_LIBS}
-    ICP
-)
-target_compile_definitions(gicp_example PRIVATE
-        SOURCE_CLOUD_PATH="${CLOUD_PATH_1}"
-    TARGET_CLOUD_PATH="${CLOUD_PATH_3}"
+# Install examples
+install(TARGETS icp_example
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 )

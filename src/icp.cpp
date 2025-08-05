@@ -1,6 +1,5 @@
 #include <algorithm>
 
-#include <spdlog/spdlog.h>
 #include <omp.h>
 
 #include "ICP/icp.hpp"
@@ -13,7 +12,7 @@
 
 bool ICP::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   if (source_cloud.IsEmpty() || target_cloud.IsEmpty()) {
-    spdlog::warn("source cloud or target cloud are empty!");
+    LOG(WARNING) << "source cloud or target cloud are empty!";
     return false;
   }
 
@@ -31,8 +30,8 @@ Eigen::Matrix4d ICP::computeTransform(const PointCloud& source_cloud, const Poin
   }
 }
 
-std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Vector<double, 6>> ICP::compute_JTJ_and_JTr(const Eigen::Vector3d& p,
-                                                                                          const Eigen::Vector3d& q) {
+std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>> ICP::compute_JTJ_and_JTr(const Eigen::Vector3d& p,
+                                                                                             const Eigen::Vector3d& q) {
   Eigen::Matrix<double, 3, 6> J;
   Eigen::Vector3d r;
 
@@ -46,7 +45,7 @@ std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Vector<double, 6>> ICP::compute_JT
 
 Eigen::Matrix4d ICP::computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud) {
   Eigen::Matrix<double, 6, 6> JTJ;
-  Eigen::Vector<double, 6> JTr;
+  Eigen::Matrix<double, 6, 1> JTr;
   JTJ.setZero();
   JTr.setZero();
 
@@ -55,7 +54,7 @@ Eigen::Matrix4d ICP::computeTransformLeastSquares(const PointCloud& source_cloud
 #pragma omp parallel
   {
     Eigen::Matrix<double, 6, 6> JTJ_private;
-    Eigen::Vector<double, 6> JTr_private;
+    Eigen::Matrix<double, 6, 1> JTr_private;
     JTJ_private.setZero();
     JTr_private.setZero();
 #pragma omp for nowait
@@ -74,7 +73,7 @@ Eigen::Matrix4d ICP::computeTransformLeastSquares(const PointCloud& source_cloud
     }
   }
 
-  Eigen::Vector<double, 6> x_opt = JTJ.ldlt().solve(-JTr);
+  Eigen::Matrix<double, 6, 1> x_opt = JTJ.ldlt().solve(-JTr);
   Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
   transform.block<3, 3>(0, 0) = createRotationMatrix(x_opt.tail(3));
   transform.block<3, 1>(0, 3) = x_opt.head(3);

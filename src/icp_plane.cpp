@@ -2,8 +2,6 @@
 
 #include <Eigen/Dense>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/fmt/ostr.h>
 #include <omp.h>
 
 #include "ICP/icp_plane.hpp"
@@ -11,12 +9,12 @@
 
 bool ICP_PLANE::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   if (source_cloud.IsEmpty() || target_cloud.IsEmpty()) {
-    spdlog::warn("source cloud or target cloud are empty!");
+    LOG(WARNING) << "source cloud or target cloud are empty!";
     return false;
   }
 
   if (!target_cloud.HasNormals()) {
-    spdlog::warn("point to plane ICP needs normal points in the target pointcloud.");
+    LOG(WARNING) << "point to plane ICP needs normal points in the target pointcloud.";
     return false;
   }
 
@@ -37,7 +35,7 @@ Eigen::Matrix4d ICP_PLANE::computeTransform(const PointCloud& source_cloud, cons
 Eigen::Matrix4d ICP_PLANE::computeTransformLeastSquares(const PointCloud& source_cloud,
                                                         const PointCloud& target_cloud) {
   Eigen::Matrix<double, 6, 6> JTJ;
-  Eigen::Vector<double, 6> JTr;
+  Eigen::Matrix<double, 6, 1> JTr;
   JTJ.setZero();
   JTr.setZero();
 
@@ -46,7 +44,7 @@ Eigen::Matrix4d ICP_PLANE::computeTransformLeastSquares(const PointCloud& source
 #pragma omp parallel
   {
     Eigen::Matrix<double, 6, 6> JTJ_private;
-    Eigen::Vector<double, 6> JTr_private;
+    Eigen::Matrix<double, 6, 1> JTr_private;
     JTJ_private.setZero();
     JTr_private.setZero();
 #pragma omp for nowait
@@ -66,17 +64,17 @@ Eigen::Matrix4d ICP_PLANE::computeTransformLeastSquares(const PointCloud& source
     }
   }
 
-  Eigen::Vector<double, 6> x_opt = JTJ.ldlt().solve(-JTr);
+  Eigen::Matrix<double, 6, 1> x_opt = JTJ.ldlt().solve(-JTr);
   Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
   transform.block<3, 3>(0, 0) = createRotationMatrix(x_opt.tail(3));
   transform.block<3, 1>(0, 3) = x_opt.head(3);
   return transform;
 }
 
-std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Vector<double, 6>>
+std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
 ICP_PLANE::compute_JTJ_and_JTr(const Eigen::Vector3d& p, const Eigen::Vector3d& q, const Eigen::Vector3d& q_norm) {
   Eigen::Matrix<double, 6, 1> JT;
-  Eigen::Vector<double, 1> r;
+  double r;
   JT.block<3, 1>(0, 0) = q_norm;
   JT.block<3, 1>(3, 0) = p.cross(q_norm);
   r = (p - q).transpose() * q_norm;

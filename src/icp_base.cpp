@@ -1,6 +1,5 @@
 #include <algorithm>
 
-#include <spdlog/spdlog.h>
 #include <omp.h>
 
 #include "ICP/icp_base.hpp"
@@ -27,7 +26,7 @@ void ICP_BASE::align(PointCloud& source_cloud, PointCloud& target_cloud) {
     if (convergenceCheck(transform)) {
       t_corr += std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count();
       t_comp += std::chrono::duration_cast<std::chrono::microseconds>(t_2 - t_1).count();
-      spdlog::info("ICP converged! iter = {}", i + 1);
+      std::cout << "ICP converged! iter = " << (i + 1) << std::endl;
       converged_ = true;
       break;
     }
@@ -39,9 +38,9 @@ void ICP_BASE::align(PointCloud& source_cloud, PointCloud& target_cloud) {
     t_trans += std::chrono::duration_cast<std::chrono::microseconds>(t_3 - t_2).count();
   }
 
-  spdlog::info("correspondence elapsed time : {} micro seconds", t_corr);
-  spdlog::info("compute transform elapsed time : {} micro seconds", t_comp);
-  spdlog::info("transform/check elapsed time : {} micro seconds", t_trans);
+  std::cout << "correspondence elapsed time : " << t_corr << " micro seconds" << std::endl;
+  std::cout << "compute transform elapsed time : " << t_comp << " micro seconds" << std::endl;
+  std::cout << "transform/check elapsed time : " << t_trans << " micro seconds" << std::endl;
 }
 
 void ICP_BASE::correspondenceMatching(const PointCloud& tmp_cloud) {

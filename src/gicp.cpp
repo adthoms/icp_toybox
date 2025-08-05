@@ -2,8 +2,6 @@
 
 #include <Eigen/Dense>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/fmt/ostr.h>
 #include <omp.h>
 
 #include "ICP/gicp.hpp"
@@ -11,26 +9,26 @@
 
 bool GICP::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   if (source_cloud.IsEmpty() || target_cloud.IsEmpty()) {
-    spdlog::warn("source cloud or target cloud are empty!");
+    std::cout << "[WARNING] source cloud or target cloud are empty!" << std::endl;
     return false;
   }
 
   if (!source_cloud.HasCovariances()) {
     if (source_cloud.HasNormals()) {
-      spdlog::info("compute source cloud covariances from normals");
+      std::cout << "compute source cloud covariances from normals" << std::endl;
       computeCovariancesFromNormals(source_cloud);
     } else {
-      spdlog::warn("source cloud needs normals or covariances");
+      std::cout << "[WARNING] source cloud needs normals or covariances" << std::endl;
       return false;
     }
   }
 
   if (!target_cloud.HasCovariances()) {
     if (target_cloud.HasNormals()) {
-      spdlog::info("compute target cloud covariances from normals");
+      std::cout << "compute target cloud covariances from normals" << std::endl;
       computeCovariancesFromNormals(target_cloud);
     } else {
-      spdlog::warn("target cloud needs normals or covariances");
+      std::cout << "[WARNING] target cloud needs normals or covariances" << std::endl;
       return false;
     }
   }
@@ -78,7 +76,7 @@ Eigen::Matrix4d GICP::computeTransformLeastSquaresUsingCeres(const PointCloud& s
 
 Eigen::Matrix4d GICP::computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud) {
   Eigen::Matrix<double, 6, 6> JTJ;
-  Eigen::Vector<double, 6> JTr;
+  Eigen::Matrix<double, 6, 1> JTr;
   JTJ.setZero();
   JTr.setZero();
 
@@ -87,7 +85,7 @@ Eigen::Matrix4d GICP::computeTransformLeastSquares(const PointCloud& source_clou
 #pragma omp parallel
   {
     Eigen::Matrix<double, 6, 6> JTJ_private;
-    Eigen::Vector<double, 6> JTr_private;
+    Eigen::Matrix<double, 6, 1> JTr_private;
     JTJ_private.setZero();
     JTr_private.setZero();
 #pragma omp for nowait
@@ -108,17 +106,17 @@ Eigen::Matrix4d GICP::computeTransformLeastSquares(const PointCloud& source_clou
     }
   }
 
-  Eigen::Vector<double, 6> x_opt = JTJ.ldlt().solve(-JTr);
+  Eigen::Matrix<double, 6, 1> x_opt = JTJ.ldlt().solve(-JTr);
   Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
   transform.block<3, 3>(0, 0) = createRotationMatrix(x_opt.tail(3));
   transform.block<3, 1>(0, 3) = x_opt.head(3);
   return transform;
 }
 
-std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Vector<double, 6>> GICP::compute_JTJ_and_JTr(
+std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>> GICP::compute_JTJ_and_JTr(
     const Eigen::Vector3d& p, const Eigen::Matrix3d& p_cov, const Eigen::Vector3d& q, const Eigen::Matrix3d& q_cov) {
   Eigen::Matrix<double, 6, 6> JTJ;
-  Eigen::Vector<double, 6> JTr;
+  Eigen::Matrix<double, 6, 1> JTr;
 
   Eigen::Matrix<double, 3, 6> J;
   J.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();

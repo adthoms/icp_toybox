@@ -10,7 +10,7 @@ public:
     solver_type_ = solver_type;
 
     if (solver_type == SolverType::SVD) {
-      spdlog::warn("ICP_PLANE has no SVD solver. use LeastSquares solver");
+      LOG(WARNING) << "ICP_PLANE has no SVD solver. use LeastSquares solver";
       solver_type = SolverType::LeastSquares;
     } else if (solver_type == SolverType::LeastSquaresUsingCeres)
       optimizer_ = std::make_unique<CeresOptimizer>(CeresOptimizer::Type::PointToPlane);
@@ -23,7 +23,7 @@ private:
   Eigen::Matrix4d computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud);
   Eigen::Matrix4d computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
                                                          const PointCloud& target_cloud);
-  std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Vector<double, 6>>
+  std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
   compute_JTJ_and_JTr(const Eigen::Vector3d& p, const Eigen::Vector3d& q, const Eigen::Vector3d& q_norm);
 };
 
