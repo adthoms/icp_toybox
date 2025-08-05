@@ -1,55 +1,134 @@
-# ICP-Implementation
-This repository implements ICP, Point-to-Plane ICP, and G-ICP algorithms.
+# ICP Toybox
 
-This repository utilizes the Open3D library for PointCloud processing and Ceres-Solver for Nonlinear Optimization.
+This repository implements ICP, Point-to-Plane ICP, and G-ICP algorithms using direct and iterative solvers.
+
 ## References
 
 - ICP Algorithm : [Least-Squares Rigid Motion Using SVD](https://igl.ethz.ch/projects/ARAP/svd_rot.pdf) by Olga Sorkine-Hornung and Michael Rabinovich.
-
 - ICP(point to plane) Algorithm : [Linear Least-Squares Optimization for Point-to-Plane ICP Surface Registration](https://www.comp.nus.edu.sg/~lowkl/publications/lowk_point-to-plane_icp_techrep.pdf) by Kok-Lim Low.
-
 - GICP Algorithm : [Generalized-ICP](https://www.roboticsproceedings.org/rss05/p21.pdf) by Aleksandr V. Segal, Dirk Haehnel and Sebastian Thrun.
+
 ## Dependencies
 
-- Ubuntu
-- [Open3D](http://www.open3d.org/)
-- [Ceres-Solver](http://ceres-solver.org/)
+- [Ubuntu 20.04](https://releases.ubuntu.com/focal/)
+- [Gflags 2.2.2](https://github.com/gflags/gflags)
+- [Glog 0.6.0](https://github.com/google/glog)
+- [Ceres-Solver 2.2.0](http://ceres-solver.org/)
+- [Open3D 0.17.0](http://www.open3d.org/)
 
+## Install
+
+```bash
+# Apt Packages
+sudo apt install build-essential
+sudo apt-get install libatlas-base-dev libeigen3-dev libsuitesparse-dev
+
+# CMake (https://apt.kitware.com/)
+sudo apt-get update
+sudo apt-get install ca-certificates gpg wget
+test -f /usr/share/doc/kitware-archive-keyring/copyright || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+sudo apt-get update
+test -f /usr/share/doc/kitware-archive-keyring/copyright || sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
+sudo apt-get install kitware-archive-keyring
+echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal-rc main' | sudo tee -a /etc/apt/sources.list.d/kitware.list >/dev/null
+sudo apt-get update
+sudo apt install cmake=3.27.7-0kitware1ubuntu20.04.1 cmake-data=3.27.7-0kitware1ubuntu20.04.1 # CMake>=3.26 required
+
+# Gflags (https://github.com/gflags/gflags/blob/master/INSTALL.md#compiling-the-source-code-with-cmake)
+git clone --depth 1 --branch v2.2.2 git@github.com:gflags/gflags.git
+cd gflags
+mkdir -p build && cd build
+cmake -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_CXX_FLAGS=-fPIC \
+      -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+sudo make install
+
+# Glog (https://google.github.io/glog/stable/build/#cmake)
+git clone --depth 1 --branch v0.6.0 git@github.com:google/glog.git
+cd glog
+cmake -S . -B build \
+      -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_CXX_FLAGS=-fPIC \
+      -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+sudo cmake --build build --target install
+
+# Ceres (http://ceres-solver.org/installation.html#linux)
+cd ~/Downloads
+wget http://ceres-solver.org/ceres-solver-2.2.0.tar.gz && tar zxf ceres-solver-2.2.0.tar.gz
+cd ceres-solver-2.2.0
+mkdir -p build && cd build
+cmake -DUSE_CUDA=OFF \
+      -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_CXX_FLAGS=-fPIC \
+      -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+sudo make install
+
+# Open 3D (https://www.open3d.org/docs/release/compilation.html)
+git clone --depth 1 --branch v0.17.0 https://github.com/isl-org/Open3D
+cd Open3d && ./util/install_deps_ubuntu.sh
+mkdir -p build && cd build
+cmake -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+      -DBUILD_SHARED_LIBS=ON \
+      -DBUILD_PYTHON_MODULE=OFF \
+      -DBUILD_CUDA_MODULE=OFF \
+      -DGLIBCXX_USE_CXX11_ABI=ON \
+      -DBUILD_PYTORCH_OPS=OFF \
+      -DBUILD_TENSORFLOW_OPS=OFF \
+      -DBUNDLE_OPEN3D_ML=OFF ..
+make -j$(nproc)
+sudo make install
+```
 
 ## Build
 
 ```bash
-git clone https://github.com/LimHaeryong/ICP-Implementation.git
-
-cd ICP-Implementation
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
+cd ~/catkin_ws/src
+git clone git@github.com:adthoms/icp_toybox.git
+catkin build -j$(nproc) icp_toybox
 ```
 
 ## Examples
 
-Demonstrates the basic usage of the ICP algorithm. Additionally, compares the results with Open3D's ICP implementation for performance evaluation.
-
-1. ICP example
+Run GICP and P2P-ICP algorithms, using Open3D and custom direct and iterative solvers:
+```bash
+cd ~/catkin_ws/build/icp_toybox
+./icp_example \
+--source_cloud_path=/path/to/source_cloud*.bin \
+--target_cloud_path=/path/to/source_cloud*.bin
 ```
-./icp_example 
-```
-
-2. Point to Plane ICP example
-```
-./icp_plane_example
-```
-
-3. Generalized ICP example
-```
-./gicp_example
+See the full list of arguments with descriptions:
+```bash
+./icp_example --help
 ```
 
 ## Result
 
-![](./resources/ICP_result.png)
+![](./data/ICP_result.png)
 
 ## Dataset
 
-The [KITTI dataset](http://www.cvlibs.net/datasets/kitti/) has been utilized in the examples provided in this repository. 
+The [KITTI dataset](http://www.cvlibs.net/datasets/kitti/) has been utilized in the examples provided in this repository.
+
+## Troubleshooting
+
+remove any apt packages for glog and gflags by first checking existing installs
+```bash
+dpkg -l | grep gflags
+dpkg -l | grep glog
+```
+and then removing them. For example
+```bash
+sudo apt-get remove libgoogle-glog-dev libgoogle-glog0v5
+sudo apt-get remove libgflags-dev  libgflags2.2
+```
