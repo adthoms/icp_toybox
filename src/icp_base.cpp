@@ -26,7 +26,7 @@ void ICP_BASE::align(PointCloud& source_cloud, PointCloud& target_cloud) {
     if (convergenceCheck(transform)) {
       t_corr += std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count();
       t_comp += std::chrono::duration_cast<std::chrono::microseconds>(t_2 - t_1).count();
-      std::cout << "ICP converged! iter = " << (i + 1) << std::endl;
+      LOG(INFO) << "ICP converged! iter = " << (i + 1);
       converged_ = true;
       break;
     }
@@ -38,9 +38,9 @@ void ICP_BASE::align(PointCloud& source_cloud, PointCloud& target_cloud) {
     t_trans += std::chrono::duration_cast<std::chrono::microseconds>(t_3 - t_2).count();
   }
 
-  std::cout << "correspondence elapsed time : " << t_corr << " micro seconds" << std::endl;
-  std::cout << "compute transform elapsed time : " << t_comp << " micro seconds" << std::endl;
-  std::cout << "transform/check elapsed time : " << t_trans << " micro seconds" << std::endl;
+  LOG(INFO) << "correspondence elapsed time : " << t_corr << " micro seconds";
+  LOG(INFO) << "compute transform elapsed time : " << t_comp << " micro seconds";
+  LOG(INFO) << "transform/check elapsed time : " << t_trans << " micro seconds";
 }
 
 void ICP_BASE::correspondenceMatching(const PointCloud& tmp_cloud) {

@@ -176,6 +176,7 @@ void runICP(const std::shared_ptr<open3d::geometry::PointCloud>& source,
 }
 
 int main(int argc, char* argv[]) {
+  google::InitGoogleLogging(argv[0]);
   CLI::App app{"ICP Example"};
 
   // arguments
