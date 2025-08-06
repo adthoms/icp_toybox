@@ -107,13 +107,14 @@ mkdir -p build && cd build
 cmake -DCMAKE_CXX_STANDARD=17 \
       -DCMAKE_CXX_STANDARD_REQUIRED=ON \
       -DBUILD_SHARED_LIBS=ON \
-      -DBUILD_PYTHON_MODULE=OFF \
+      -DBUILD_PYTHON_MODULE=ON \
       -DBUILD_CUDA_MODULE=OFF \
       -DGLIBCXX_USE_CXX11_ABI=ON \
       -DBUILD_PYTORCH_OPS=OFF \
       -DBUILD_TENSORFLOW_OPS=OFF \
       -DBUNDLE_OPEN3D_ML=OFF ..
 make -j$(nproc)
+make python-package
 sudo make install
 ```
 
@@ -138,18 +139,33 @@ See the full list of arguments with descriptions:
 ```bash
 ./icp_example --help
 ```
+Examples include
+### [KITTI](http://www.cvlibs.net/datasets/kitti/)
+```bash
+./icp_example \
+      --source_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/kitti/0000000240.bin \
+      --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/kitti/0000000250.bin
+```
 
-## Result
-
-![](./data/ICP_result.png)
-
-## Dataset
-
-The [KITTI dataset](http://www.cvlibs.net/datasets/kitti/) has been utilized in the examples provided in this repository.
+### Primitive
+```bash
+./icp_example \
+      --source_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/source.pcd \
+      --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/target.pcd
+```
+The point clouds used for the **Primitive** example can be generated as follows:
+```bash
+cd ~/catkin_ws/build/icp_toybox/scripts
+python generate_primitive_point_clouds.py
+```
+See the full list of arguments with descriptions:
+```bash
+python generate_primitive_point_clouds.py --help
+```
 
 ## Troubleshooting
 
-remove any apt packages for glog and gflags by first checking existing installs
+1. Remove any apt packages for glog and gflags by first checking existing installs
 ```bash
 dpkg -l | grep gflags
 dpkg -l | grep glog
@@ -159,3 +175,5 @@ and then removing them. For example
 sudo apt-get remove libgoogle-glog-dev libgoogle-glog0v5
 sudo apt-get remove libgflags-dev  libgflags2.2
 ```
+
+2. Ensure only one version (>= 3.8) of python3 is installed.

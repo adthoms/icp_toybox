@@ -94,11 +94,23 @@ std::shared_ptr<open3d::geometry::PointCloud> readBinFile(const std::string& fil
   return cloud;
 }
 
-std::shared_ptr<open3d::geometry::PointCloud> loadPointCloud(const std::string& path) {
-  if (path.substr(path.size() - 4) == ".bin")
-    return readBinFile(path);
+std::shared_ptr<open3d::geometry::PointCloud> readPCDFile(const std::string& file_path) {
+  auto cloud = std::make_shared<open3d::geometry::PointCloud>();
+  if (!open3d::io::ReadPointCloud(file_path, *cloud)) {
+    std::cerr << "Failed to read PCD file: " << file_path << std::endl;
+    cloud->Clear();
+  }
+  return cloud;
+}
+
+std::shared_ptr<open3d::geometry::PointCloud> loadPointCloud(const std::string& file_path) {
+  const std::string file_ext = file_path.substr(file_path.find_last_of('.'));
+  if (file_ext == ".bin")
+    return readBinFile(file_path);
+  else if (file_ext == ".pcd")
+    return readPCDFile(file_path);
   else
-    return open3d::io::CreatePointCloudFromFile(path);
+    return open3d::io::CreatePointCloudFromFile(file_path);
 }
 
 void runICP(const std::shared_ptr<open3d::geometry::PointCloud>& source,
