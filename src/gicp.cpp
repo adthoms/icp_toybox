@@ -9,26 +9,26 @@
 
 bool GICP::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   if (source_cloud.IsEmpty() || target_cloud.IsEmpty()) {
-    std::cout << "[WARNING] source cloud or target cloud are empty!" << std::endl;
+    LOG(WARNING) << "source cloud or target cloud are empty!";
     return false;
   }
 
   if (!source_cloud.HasCovariances()) {
     if (source_cloud.HasNormals()) {
-      std::cout << "compute source cloud covariances from normals" << std::endl;
+      LOG(INFO) << "compute source cloud covariances from normals";
       computeCovariancesFromNormals(source_cloud);
     } else {
-      std::cout << "[WARNING] source cloud needs normals or covariances" << std::endl;
+      LOG(WARNING) << "source cloud needs normals or covariances";
       return false;
     }
   }
 
   if (!target_cloud.HasCovariances()) {
     if (target_cloud.HasNormals()) {
-      std::cout << "compute target cloud covariances from normals" << std::endl;
+      LOG(INFO) << "compute target cloud covariances from normals";
       computeCovariancesFromNormals(target_cloud);
     } else {
-      std::cout << "[WARNING] target cloud needs normals or covariances" << std::endl;
+      LOG(WARNING) << "target cloud needs normals or covariances";
       return false;
     }
   }

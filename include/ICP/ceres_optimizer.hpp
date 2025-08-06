@@ -15,28 +15,15 @@ public:
   CeresOptimizer(Type optimizer_type) : optimizer_type_(optimizer_type), problem_(std::make_unique<ceres::Problem>()) {
     options_.num_threads = omp_get_max_threads();
     options_.minimizer_progress_to_stdout = false;
+    options_.linear_solver_type = ceres::LinearSolverType::DENSE_NORMAL_CHOLESKY;
     options_.logging_type = ceres::SILENT;
+    options_.max_num_iterations = 1;
+    options_.parameter_tolerance = 1e-8;
+    options_.gradient_tolerance = 1e-8;
+    options_.function_tolerance = 1e-4;
 
-    switch (optimizer_type_) {
-    case Type::PointToPlane:
-      quaternion_manifold_ = new ceres::EigenQuaternionManifold();
-      loss_function_ = new ceres::HuberLoss(1.0);
-      options_.linear_solver_type = ceres::LinearSolverType::DENSE_NORMAL_CHOLESKY;
-      options_.max_num_iterations = 1;
-      options_.parameter_tolerance = 1e-8;
-      options_.gradient_tolerance = 1e-8;
-      options_.function_tolerance = 1e-4;
-      break;
-    case Type::GICP:
-      quaternion_manifold_ = new ceres::EigenQuaternionManifold();
-      loss_function_ = new ceres::HuberLoss(1.0);
-      options_.linear_solver_type = ceres::LinearSolverType::DENSE_NORMAL_CHOLESKY;
-      options_.max_num_iterations = 1;
-      options_.parameter_tolerance = 1e-8;
-      options_.gradient_tolerance = 1e-8;
-      options_.function_tolerance = 1e-4;
-      break;
-    }
+    quaternion_manifold_ = new ceres::EigenQuaternionManifold();
+    loss_function_ = new ceres::HuberLoss(1.0);
   }
 
   virtual ~CeresOptimizer() {
@@ -49,16 +36,8 @@ public:
 
   void clear() {
     problem_.reset(new ceres::Problem());
-    switch (optimizer_type_) {
-    case Type::PointToPlane:
-      quaternion_manifold_ = new ceres::EigenQuaternionManifold();
-      loss_function_ = new ceres::HuberLoss(1.0);
-      break;
-    case Type::GICP:
-      quaternion_manifold_ = new ceres::EigenQuaternionManifold();
-      loss_function_ = new ceres::HuberLoss(1.0);
-      break;
-    }
+    quaternion_manifold_ = nullptr;
+    loss_function_ = nullptr;
   }
 
   void solve() {

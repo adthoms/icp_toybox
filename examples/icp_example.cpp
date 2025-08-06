@@ -4,10 +4,6 @@
 #include <chrono>
 #include <fstream>
 
-#include <open3d/Open3D.h>
-#include <open3d/geometry/PointCloud.h>
-#include <open3d/geometry/KDTreeFlann.h>
-
 #include <CLI/CLI.hpp>
 #include "ICP/gicp.hpp"
 #include "ICP/icp_plane.hpp"
@@ -180,6 +176,7 @@ void runICP(const std::shared_ptr<open3d::geometry::PointCloud>& source,
 }
 
 int main(int argc, char* argv[]) {
+  google::InitGoogleLogging(argv[0]);
   CLI::App app{"ICP Example"};
 
   // arguments
@@ -217,8 +214,12 @@ int main(int argc, char* argv[]) {
 
   // ICP
   std::cout << "Running ICP methods..." << std::endl;
-  const std::vector<ICPMethod> icp_methods = {
-      ICPMethod::GICP_Open3D, ICPMethod::GICP_direct, ICPMethod::P2P_ICP_Open3D, ICPMethod::P2P_ICP_direct};
+  const std::vector<ICPMethod> icp_methods = {ICPMethod::GICP_Open3D,
+                                              ICPMethod::GICP_direct,
+                                              ICPMethod::GICP_iterative,
+                                              ICPMethod::P2P_ICP_Open3D,
+                                              ICPMethod::P2P_ICP_direct,
+                                              ICPMethod::P2P_ICP_iterative};
   for (const auto& method : icp_methods) {
     runICP(source, target, source_down, target_down, max_correspondence_dist, iteration, T_source_target, method);
   }
