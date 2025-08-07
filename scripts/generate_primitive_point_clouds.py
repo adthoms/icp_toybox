@@ -32,6 +32,7 @@ class PrimitivePointCloudGenerator:
         self.height = args.height
         self.num_points = args.num_points
         self.visualize = args.visualize
+        self.save = args.save
 
         # Init variables
         self.cap_offset = 0.1
@@ -67,16 +68,31 @@ class PrimitivePointCloudGenerator:
         open3d.io.write_point_cloud(target_path, target)
 
     def visualize_source_target(self, source, target) -> None:
-        open3d.visualization.draw_geometries([source, target])
+        vis = open3d.visualization.Visualizer()
+        vis.create_window("Source [red] and Target [blue] Clouds", 1024, 768)
+        frame = open3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=2.0, origin=[0, 0, 0]
+        )
+        vis.add_geometry(self.source)
+        vis.add_geometry(self.target)
+        vis.add_geometry(frame)
+        ctr = vis.get_view_control()
+        ctr.set_lookat([0, 0, 0])
+        ctr.set_front([1, 1, 1])
+        ctr.set_up([0, 0, 1])
+        ctr.set_zoom(1.0)
+        vis.run()
+        vis.destroy_window()
 
     def run(self) -> None:
         mesh = self.generate_cylindrical_mesh()
         self.source, self.target = self.sample_and_crop(mesh)
         self.target = self.transform_target(self.target)
         file_path = os.path.dirname(os.getcwd()) + self.save_dir
-        self.save_point_clouds(self.source, self.target, file_path)
         if self.visualize:
             self.visualize_source_target(self.source, self.target)
+        if self.save:
+            self.save_point_clouds(self.source, self.target, file_path)
 
 
 def main(args):
@@ -113,6 +129,11 @@ def main(args):
         "--visualize",
         action="store_true",
         help="Visualize the generated source and target point clouds.",
+    )
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="Save the generated source and target point clouds to disk.",
     )
 
     args = parser.parse_args(args)
