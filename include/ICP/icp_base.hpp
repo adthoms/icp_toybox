@@ -30,6 +30,14 @@ public:
     max_corres_dist_ = dist;
   }
 
+  void setEigenvalueRotationThreshold(double threshold) {
+    eigenvalue_rotation_threshold_ = threshold;
+  }
+
+  void setEigenvalueTranslationThreshold(double threshold) {
+    eigenvalue_translation_threshold_ = threshold;
+  }
+
   // not converged if abs(current rmse of corresponded points - prev) > threshold
   void setRelativeMatchingRmseThreshold(double threshold) {
     relative_matching_rmse_threshold_ = threshold;
@@ -71,6 +79,8 @@ protected:
   double cos_theta_threshold_ = 1.0 - 1e-5;
   double matching_rmse_ = std::numeric_limits<double>::max();
   double matching_rmse_prev_ = std::numeric_limits<double>::max();
+  double eigenvalue_rotation_threshold_ = 1e-6;
+  double eigenvalue_translation_threshold_ = 1e-6;
 };
 
 #endif // _ICP_ICP_BASE_HPP_

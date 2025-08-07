@@ -45,7 +45,7 @@ void visualizeRegistration(const open3d::geometry::PointCloud& source,
 
   // color
   source_copy->PaintUniformColor({1, 0, 0}); // red
-  target_copy->PaintUniformColor({0, 1, 0}); // green
+  target_copy->PaintUniformColor({0, 0, 1}); // blue
 
   // transform
   source_copy->Transform(T_source_target);
@@ -53,8 +53,7 @@ void visualizeRegistration(const open3d::geometry::PointCloud& source,
   // visualize
   auto visualizer = std::make_unique<open3d::visualization::Visualizer>();
   visualizer->CreateVisualizerWindow("ICP result", 1024, 768);
-  visualizer->GetRenderOption().SetPointSize(1.0);
-  visualizer->GetRenderOption().background_color_ = {0, 0, 0}; // black
+  visualizer->GetRenderOption().SetPointSize(4.0);
   visualizer->AddGeometry(source_copy);
   visualizer->AddGeometry(target_copy);
   visualizer->Run();
@@ -113,67 +112,104 @@ std::shared_ptr<open3d::geometry::PointCloud> loadPointCloud(const std::string& 
     return open3d::io::CreatePointCloudFromFile(file_path);
 }
 
-void runICP(const std::shared_ptr<open3d::geometry::PointCloud>& source,
-            const std::shared_ptr<open3d::geometry::PointCloud>& target,
-            const std::shared_ptr<open3d::geometry::PointCloud>& source_down,
-            const std::shared_ptr<open3d::geometry::PointCloud>& target_down,
-            double max_correspondence_dist,
-            int iteration,
-            Eigen::Matrix4d& T_source_target,
-            const ICPMethod& method) {
+struct ICPParams {
+  ICPParams(const std::string& source_cloud_path,
+            const std::string& target_cloud_path,
+            int iter,
+            double voxel_size,
+            double max_corr_dist,
+            double eig_rot_thresh,
+            double eig_trans_thresh)
+    : iteration(iter),
+      voxel_size(voxel_size),
+      max_correspondence_dist(max_corr_dist),
+      eigenvalue_rotation_threshold(eig_rot_thresh),
+      eigenvalue_translation_threshold(eig_trans_thresh) {
+    // load source and target point clouds
+    source = loadPointCloud(source_cloud_path);
+    target = loadPointCloud(target_cloud_path);
+
+    // down-sample source and target and estimate normals
+    source_down = source->VoxelDownSample(voxel_size);
+    target_down = target->VoxelDownSample(voxel_size);
+    source_down->EstimateNormals(open3d::geometry::KDTreeSearchParamHybrid(voxel_size * 2.0, 30));
+    target_down->EstimateNormals(open3d::geometry::KDTreeSearchParamHybrid(voxel_size * 2.0, 30));
+  }
+
+  int iteration;
+  double voxel_size;
+  double max_correspondence_dist;
+  double eigenvalue_rotation_threshold;
+  double eigenvalue_translation_threshold;
+  std::shared_ptr<open3d::geometry::PointCloud> source;
+  std::shared_ptr<open3d::geometry::PointCloud> target;
+  std::shared_ptr<open3d::geometry::PointCloud> source_down;
+  std::shared_ptr<open3d::geometry::PointCloud> target_down;
+};
+
+void runICP(const ICPParams& icp_params, Eigen::Matrix4d& T_source_target, const ICPMethod& method) {
+  if (icp_params.source->IsEmpty() || icp_params.target->IsEmpty()) {
+    LOG(ERROR) << "Unable to load source or target files.";
+    return;
+  }
+
   auto t_start = std::chrono::high_resolution_clock::now();
   switch (method) {
   case ICPMethod::GICP_Open3D: {
     auto reg_result = open3d::pipelines::registration::RegistrationGeneralizedICP(
-        *source_down,
-        *target_down,
-        max_correspondence_dist,
+        *icp_params.source_down,
+        *icp_params.target_down,
+        icp_params.max_correspondence_dist,
         Eigen::Matrix4d::Identity(),
         open3d::pipelines::registration::TransformationEstimationForGeneralizedICP(),
-        open3d::pipelines::registration::ICPConvergenceCriteria(1e-6, 1e-6, iteration));
+        open3d::pipelines::registration::ICPConvergenceCriteria(1e-6, 1e-6, icp_params.iteration));
     T_source_target = reg_result.transformation_;
     break;
   }
   case ICPMethod::GICP_direct: {
     GICP icp(ICP_BASE::SolverType::LeastSquares);
-    icp.setIteration(iteration);
-    icp.setMaxCorrespondenceDist(max_correspondence_dist);
-    icp.align(*source_down, *target_down);
+    icp.setIteration(icp_params.iteration);
+    icp.setMaxCorrespondenceDist(icp_params.max_correspondence_dist);
+    icp.setEigenvalueRotationThreshold(icp_params.eigenvalue_rotation_threshold);
+    icp.setEigenvalueTranslationThreshold(icp_params.eigenvalue_translation_threshold);
+    icp.align(*icp_params.source_down, *icp_params.target_down);
     T_source_target = icp.getResultTransform();
     break;
   }
   case ICPMethod::GICP_iterative: {
     GICP icp(ICP_BASE::SolverType::LeastSquaresUsingCeres);
-    icp.setIteration(iteration);
-    icp.setMaxCorrespondenceDist(max_correspondence_dist);
-    icp.align(*source_down, *target_down);
+    icp.setIteration(icp_params.iteration);
+    icp.setMaxCorrespondenceDist(icp_params.max_correspondence_dist);
+    icp.align(*icp_params.source_down, *icp_params.target_down);
     T_source_target = icp.getResultTransform();
     break;
   }
   case ICPMethod::P2P_ICP_Open3D: {
     auto reg_result = open3d::pipelines::registration::RegistrationICP(
-        *source_down,
-        *target_down,
-        max_correspondence_dist,
+        *icp_params.source_down,
+        *icp_params.target_down,
+        icp_params.max_correspondence_dist,
         Eigen::Matrix4d::Identity(),
         open3d::pipelines::registration::TransformationEstimationPointToPlane(),
-        open3d::pipelines::registration::ICPConvergenceCriteria(1e-6, 1e-6, iteration));
+        open3d::pipelines::registration::ICPConvergenceCriteria(1e-6, 1e-6, icp_params.iteration));
     T_source_target = reg_result.transformation_;
     break;
   }
   case ICPMethod::P2P_ICP_direct: {
     ICP_PLANE icp(ICP_BASE::SolverType::LeastSquares);
-    icp.setIteration(iteration);
-    icp.setMaxCorrespondenceDist(max_correspondence_dist);
-    icp.align(*source_down, *target_down);
+    icp.setIteration(icp_params.iteration);
+    icp.setMaxCorrespondenceDist(icp_params.max_correspondence_dist);
+    icp.setEigenvalueRotationThreshold(icp_params.eigenvalue_rotation_threshold);
+    icp.setEigenvalueTranslationThreshold(icp_params.eigenvalue_translation_threshold);
+    icp.align(*icp_params.source_down, *icp_params.target_down);
     T_source_target = icp.getResultTransform();
     break;
   }
   case ICPMethod::P2P_ICP_iterative: {
     ICP_PLANE icp(ICP_BASE::SolverType::LeastSquaresUsingCeres);
-    icp.setIteration(iteration);
-    icp.setMaxCorrespondenceDist(max_correspondence_dist);
-    icp.align(*source_down, *target_down);
+    icp.setIteration(icp_params.iteration);
+    icp.setMaxCorrespondenceDist(icp_params.max_correspondence_dist);
+    icp.align(*icp_params.source_down, *icp_params.target_down);
     T_source_target = icp.getResultTransform();
     break;
   }
@@ -184,7 +220,7 @@ void runICP(const std::shared_ptr<open3d::geometry::PointCloud>& source,
   // results
   std::cout << ICPMethodToString(method) << " elapsed time : " << duration << "ms" << std::endl;
   std::cout << "T_source_target = \n" << T_source_target << std::endl;
-  visualizeRegistration(*source, *target, T_source_target);
+  visualizeRegistration(*icp_params.source_down, *icp_params.target_down, T_source_target);
 }
 
 int main(int argc, char* argv[]) {
@@ -192,37 +228,41 @@ int main(int argc, char* argv[]) {
   CLI::App app{"ICP Example"};
 
   // arguments
-  std::string source_cloud_path;
-  std::string target_cloud_path;
-  int iteration = 100;
-  double voxel_size = 0.3;
-  double max_correspondence_dist = 10.0;
+  std::string source_cloud_path, target_cloud_path;
+  int iteration;
+  double voxel_size, max_correspondence_dist, eigenvalue_rotation_threshold, eigenvalue_translation_threshold;
 
   // parse command line arguments
   app.add_option("--source_cloud_path", source_cloud_path, "Path to source point cloud")->required();
   app.add_option("--target_cloud_path", target_cloud_path, "Path to target point cloud")->required();
-  app.add_option("--iteration", iteration, "Number of ICP iterations");
-  app.add_option("--voxel_size", voxel_size, "Voxel size for downsampling");
-  app.add_option("--max_correspondence_dist", max_correspondence_dist, "Max correspondence distance");
-
+  app.add_option("--iteration", iteration, "Number of ICP iterations")->type_name("int")->default_val("100");
+  app.add_option("--voxel_size", voxel_size, "Voxel size for downsampling")->type_name("double")->default_val("0.3");
+  app.add_option("--max_correspondence_dist", max_correspondence_dist, "Max correspondence distance")
+      ->type_name("double")
+      ->default_val("10.0");
+  app.add_option("--eigenvalue_rotation_threshold",
+                 eigenvalue_rotation_threshold,
+                 "Threshold for rotation eigenvalue to satisfy null space approximation of V_r")
+      ->type_name("double")
+      ->default_val("1e-6");
+  app.add_option("--eigenvalue_translation_threshold",
+                 eigenvalue_translation_threshold,
+                 "Threshold for translation eigenvalue to satisfy null space approximation or V_t")
+      ->type_name("double")
+      ->default_val("1e-6");
   CLI11_PARSE(app, argc, argv);
-
-  // load source and target point clouds
-  std::shared_ptr<open3d::geometry::PointCloud> source = loadPointCloud(source_cloud_path);
-  std::shared_ptr<open3d::geometry::PointCloud> target = loadPointCloud(target_cloud_path);
-  if (source->IsEmpty() || target->IsEmpty()) {
-    LOG(ERROR) << "Unable to load source or target files.";
-    std::exit(1);
-  }
 
   // init transformation matrix
   Eigen::Matrix4d T_source_target = Eigen::Matrix4d::Identity();
 
-  // down-sample source and target and estimate normals
-  std::shared_ptr<open3d::geometry::PointCloud> source_down = source->VoxelDownSample(voxel_size);
-  std::shared_ptr<open3d::geometry::PointCloud> target_down = target->VoxelDownSample(voxel_size);
-  source_down->EstimateNormals(open3d::geometry::KDTreeSearchParamHybrid(voxel_size * 2.0, 30));
-  target_down->EstimateNormals(open3d::geometry::KDTreeSearchParamHybrid(voxel_size * 2.0, 30));
+  // set ICP parameters
+  ICPParams icp_params(source_cloud_path,
+                       target_cloud_path,
+                       iteration,
+                       voxel_size,
+                       max_correspondence_dist,
+                       eigenvalue_rotation_threshold,
+                       eigenvalue_translation_threshold);
 
   // ICP
   std::cout << "Running ICP methods..." << std::endl;
@@ -233,7 +273,7 @@ int main(int argc, char* argv[]) {
                                               ICPMethod::P2P_ICP_direct,
                                               ICPMethod::P2P_ICP_iterative};
   for (const auto& method : icp_methods) {
-    runICP(source, target, source_down, target_down, max_correspondence_dist, iteration, T_source_target, method);
+    runICP(icp_params, T_source_target, method);
   }
   std::cout << "ICP methods complete." << std::endl;
   return 0;

@@ -64,9 +64,70 @@ Eigen::Matrix4d ICP_PLANE::computeTransformLeastSquares(const PointCloud& source
     }
   }
 
-  Eigen::Matrix<double, 6, 1> x_opt = JTJ.ldlt().solve(-JTr);
+  // lambda expression for solving {V, Σ} of H = V Σ V^T where H is PD
+  auto compute_svd = [](const Eigen::Matrix3d& H) -> std::pair<Eigen::Matrix3d, Eigen::Vector3d> {
+    Eigen::JacobiSVD<Eigen::Matrix3d> svd(H, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    return std::make_pair(svd.matrixU(), svd.singularValues());
+  };
+
+  // compute eigenvectors and eigenvalues of the hessian from P2P-ICP
+  const Eigen::Matrix3d& H_tt = JTJ.block<3, 3>(0, 0);
+  const Eigen::Matrix3d& H_rr = JTJ.block<3, 3>(3, 3);
+  const auto [V_t, Sigma_t] = compute_svd(H_tt);
+  const auto [V_r, Sigma_r] = compute_svd(H_rr);
+
+  // count number of constraints
+  const int num_trans_constraints = std::count_if(Sigma_t.data(), Sigma_t.data() + 3, [this](double v) {
+    // std::cout << "Sigma_t " << v << std::endl;
+    return v < eigenvalue_translation_threshold_;
+  });
+  const int num_rot_constraints = std::count_if(Sigma_r.data(), Sigma_r.data() + 3, [this](double v) {
+    // std::cout << "Sigma_r " << v << std::endl;
+    return v < eigenvalue_rotation_threshold_;
+  });
+  const int c = num_trans_constraints + num_rot_constraints;
+
+  // construct constraint matrix
+  Eigen::MatrixXd C = Eigen::MatrixXd::Zero(c, 6);
+  if (c > 0) {
+    // check if v_j ∈ {V_t, V_r} is in the null space of V_t and V_r by thresholding the eigenvalues
+    int idx = 0;
+    for (int j = 0; j < 3; ++j) {
+      if (Sigma_t(j) < eigenvalue_translation_threshold_) {
+        C.block<1, 3>(idx, 0) = V_t.col(j).transpose();
+        idx++;
+      }
+    }
+    for (int j = 0; j < 3; ++j) {
+      if (Sigma_r(j) < eigenvalue_rotation_threshold_) {
+        C.block<1, 3>(idx, 3) = V_r.col(j).transpose();
+        idx++;
+      }
+    }
+  }
+
+  // init augmented hessian and gradient
+  Eigen::MatrixXd H_aug;
+  Eigen::VectorXd g_aug;
+
+  // resize hessian and gradient to accommodate constraints
+  H_aug.resize(6 + c, 6 + c);
+  g_aug.resize(6 + c);
+  H_aug.setZero();
+  g_aug.setZero();
+
+  // augment hessian to satisfy KKT equations of equality-constrained P2P-ICP optimization
+  H_aug.block<6, 6>(0, 0) = JTJ;
+  H_aug.block(0, 6, 6, c) = C.transpose();
+  H_aug.block(6, 0, c, 6) = C;
+  g_aug.head<6>() = JTr;
+
+  // solve for x* = {t*, r*}
+  Eigen::VectorXd x_opt = H_aug.ldlt().solve(-g_aug);
+
+  // construct the transformation matrix from x*
   Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
-  transform.block<3, 3>(0, 0) = createRotationMatrix(x_opt.tail(3));
+  transform.block<3, 3>(0, 0) = createRotationMatrix(x_opt.segment<3>(3));
   transform.block<3, 1>(0, 3) = x_opt.head(3);
   return transform;
 }

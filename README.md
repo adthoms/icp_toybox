@@ -43,7 +43,7 @@ sudo apt install cmake=3.27.7-0kitware1ubuntu20.04.1 cmake-data=3.27.7-0kitware1
 
 ### Libraries
 
-To install the following libraries (from source), create the following directory
+To install the following libraries (from source), create the following directory:
 ```bash
 cd && mkdir -p ~/Software
 ```
@@ -97,7 +97,7 @@ make -j$(nproc)
 sudo make install
 ```
 
-[Open 3D](https://www.open3d.org/docs/release/compilation.html)
+[Open3D](https://www.open3d.org/docs/release/compilation.html)
 
 ```bash
 cd ~/Software
@@ -139,7 +139,7 @@ See the full list of arguments with descriptions:
 ```bash
 ./icp_example --help
 ```
-Examples include
+Examples include:
 ### [KITTI](http://www.cvlibs.net/datasets/kitti/)
 ```bash
 ./icp_example \
@@ -165,15 +165,15 @@ python generate_primitive_point_clouds.py --help
 
 ## Troubleshooting
 
-1. Remove any apt packages for glog and gflags by first checking existing installs
+1. Remove any apt packages for glog and gflags by first checking existing installs:
 ```bash
 dpkg -l | grep gflags
 dpkg -l | grep glog
 ```
-and then removing them. For example
+and then removing them. For example:
 ```bash
 sudo apt-get remove libgoogle-glog-dev libgoogle-glog0v5
 sudo apt-get remove libgflags-dev  libgflags2.2
 ```
 
-2. Ensure only one version (>= 3.8) of python3 is installed.
+2. Ensure only one version (>=3.8) of python3 is installed.
