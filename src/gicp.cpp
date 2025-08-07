@@ -91,8 +91,8 @@ Eigen::Matrix4d GICP::computeTransformLeastSquares(const PointCloud& source_clou
 #pragma omp for nowait
     for (int i = 0; i < num_corr; ++i) {
       const auto& p = source_cloud.points_[correspondence_set_[i].first];
-      const auto& p_cov = source_cloud.covariances_[correspondence_set_[i].first];
       const auto& q = target_cloud.points_[correspondence_set_[i].second];
+      const auto& p_cov = source_cloud.covariances_[correspondence_set_[i].first];
       const auto& q_cov = target_cloud.covariances_[correspondence_set_[i].second];
       auto [JTJi, JTri] = compute_JTJ_and_JTr(p, p_cov, q, q_cov);
       double wi = 1.0;
@@ -123,9 +123,8 @@ std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>> GICP::comput
   J.block<3, 3>(0, 3) = -skewSymmetric(p);
 
   Eigen::Matrix3d C_inv = (p_cov + q_cov).inverse();
-  double error = std::sqrt(((p - q).transpose() * C_inv * (p - q)).coeff(0));
 
-  JTJ = 1.0 / error * J.transpose() * C_inv * J;
+  JTJ = J.transpose() * C_inv * J;
   JTr = J.transpose() * C_inv * (p - q);
   return std::make_pair(JTJ, JTr);
 }

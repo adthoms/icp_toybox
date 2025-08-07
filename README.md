@@ -152,11 +152,12 @@ Examples include:
 ./icp_example \
       --source_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/source.pcd \
       --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/target.pcd
+      --eigenvalue_translation_threshold=10 # prevents motion update in degenerate z-dir
 ```
-The point clouds used for the **Primitive** example can be generated as follows:
+The point clouds used for the **Primitive** example can be visualized and generated as follows:
 ```bash
 cd ~/catkin_ws/build/icp_toybox/scripts
-python generate_primitive_point_clouds.py
+python generate_primitive_point_clouds.py --visualize --save
 ```
 See the full list of arguments with descriptions:
 ```bash

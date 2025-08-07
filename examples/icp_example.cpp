@@ -50,13 +50,25 @@ void visualizeRegistration(const open3d::geometry::PointCloud& source,
   // transform
   source_copy->Transform(T_source_target);
 
-  // visualize
+  // Add source, target, and coordinate frame to visualizer
+  auto coord_frame = open3d::geometry::TriangleMesh::CreateCoordinateFrame(1.0, Eigen::Vector3d(0, 0, 0));
   auto visualizer = std::make_unique<open3d::visualization::Visualizer>();
   visualizer->CreateVisualizerWindow("ICP result", 1024, 768);
-  visualizer->GetRenderOption().SetPointSize(4.0);
+  visualizer->GetRenderOption().SetPointSize(2.0);
   visualizer->AddGeometry(source_copy);
   visualizer->AddGeometry(target_copy);
+  visualizer->AddGeometry(coord_frame);
+
+  // Set camera to perspective view
+  open3d::visualization::ViewControl& view_ctrl = visualizer->GetViewControl();
+  view_ctrl.SetLookat(Eigen::Vector3d(0, 0, 0));
+  view_ctrl.SetFront(Eigen::Vector3d(1, 1, 1));
+  view_ctrl.SetUp(Eigen::Vector3d(0, 0, 1));
+  view_ctrl.SetZoom(1.0);
+
+  // Run visualizer
   visualizer->Run();
+  visualizer->DestroyVisualizerWindow();
 }
 
 std::shared_ptr<open3d::geometry::PointCloud> readBinFile(const std::string& file_path) {
