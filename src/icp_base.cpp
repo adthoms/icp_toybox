@@ -91,6 +91,7 @@ Eigen::Matrix4d ICP_BASE::computeTransformLeastSquares(const PointCloud& source_
   Eigen::Matrix<double, 6, 6> JTJ = Eigen::Matrix<double, 6, 6>::Zero();
   Eigen::Matrix<double, 6, 1> JTr = Eigen::Matrix<double, 6, 1>::Zero();
 
+  // construct Hessian and gradient
 #pragma omp parallel
   {
     Eigen::Matrix<double, 6, 6> JTJ_private = Eigen::Matrix<double, 6, 6>::Zero();
@@ -108,6 +109,7 @@ Eigen::Matrix4d ICP_BASE::computeTransformLeastSquares(const PointCloud& source_
     }
   }
 
+  // apply active geometric degeneracy mitigation step
   Eigen::MatrixXd H_aug;
   Eigen::VectorXd g_aug;
   computeAugmentedHessianAndGradient(JTJ, JTr, H_aug, g_aug);
