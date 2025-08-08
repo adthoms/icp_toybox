@@ -16,8 +16,8 @@ This repository implements Point-to-Plane ICP (P2P-ICP) and G-ICP algorithms usi
 
 ## References
 
-- ICP(point to plane) Algorithm : [Linear Least-Squares Optimization for Point-to-Plane ICP Surface Registration](https://www.comp.nus.edu.sg/~lowkl/publications/lowk_point-to-plane_icp_techrep.pdf) by Kok-Lim Low.
-- GICP Algorithm : [Generalized-ICP](https://www.roboticsproceedings.org/rss05/p21.pdf) by Aleksandr V. Segal, Dirk Haehnel and Sebastian Thrun.
+- P2P-ICP Algorithm : [Linear Least-Squares Optimization for Point-to-Plane ICP Surface Registration](https://www.comp.nus.edu.sg/~lowkl/publications/lowk_point-to-plane_icp_techrep.pdf) by Kok-Lim Low.
+- G-ICP Algorithm : [Generalized-ICP](https://www.roboticsproceedings.org/rss05/p21.pdf) by Aleksandr V. Segal, Dirk Haehnel and Sebastian Thrun.
 
 ## Dependencies
 
@@ -139,12 +139,12 @@ catkin build -j$(nproc) icp_toybox
 
 ## Examples
 
-Run P2P-ICP and GICP algorithms using custom solvers, which are benchmarked against Open3D's implementation:
+Run P2P-ICP and G-ICP algorithms using custom solvers, which are benchmarked against Open3D's implementation:
 ```bash
 cd ~/catkin_ws/build/icp_toybox
 ./icp_example \
---source_cloud_path=/path/to/source_cloud*.bin \
---target_cloud_path=/path/to/source_cloud*.bin
+      --source_cloud_path=/path/to/source_cloud*.bin \
+      --target_cloud_path=/path/to/source_cloud*.bin
 ```
 See the full list of arguments with descriptions:
 ```bash
@@ -163,9 +163,17 @@ Examples include:
 ./icp_example \
       --source_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/source.pcd \
       --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/target.pcd \
-      --eigenvalue_translation_threshold=10 \
-      --eigenvalue_rotation_threshold=100
 ```
+For this example, we expect degeneracy in `z` and `yaw` and directions. To enable AGDM, set the following flags for P2P-ICP:
+```bash
+--eigenvalue_translation_threshold=10 --eigenvalue_rotation_threshold=100
+```
+and for G-ICP:
+```bash
+--eigenvalue_translation_threshold=400 --eigenvalue_rotation_threshold=500
+```
+Note that these values were emperically determined by visually observing degeneracy, recording the eigenvalue(s) corresponding to the degenerate direction, and then setting the threshold above these recorded values.
+
 The point clouds used for the **Primitive** example can be visualized and generated as follows:
 ```bash
 cd ~/catkin_ws/build/icp_toybox/scripts
