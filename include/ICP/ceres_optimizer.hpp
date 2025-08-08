@@ -1,5 +1,4 @@
-#ifndef _ICP_CERES_OPTIMIZER_HPP_
-#define _ICP_CERES_OPTIMIZER_HPP_
+#pragma once
 
 #include <omp.h>
 #include <memory>
@@ -29,7 +28,6 @@ public:
   virtual ~CeresOptimizer() {
     if (quaternion_manifold_ != nullptr)
       delete quaternion_manifold_;
-
     if (loss_function_ != nullptr)
       delete loss_function_;
   }
@@ -44,11 +42,13 @@ public:
     ceres::Solver::Summary summary;
     ceres::Solve(options_, problem_.get(), &summary);
   }
+
   void addPointToPlaneResidual(const Eigen::Vector3d& p_source,
                                const Eigen::Vector3d& p_target,
                                const Eigen::Vector3d& norm_target,
                                Eigen::Quaterniond& rotation,
                                Eigen::Vector3d& translation);
+
   void addGICPResidual(const Eigen::Vector3d& p_source,
                        const Eigen::Matrix3d& cov_source,
                        const Eigen::Vector3d& p_target,
@@ -74,7 +74,6 @@ struct PointToPlaneError {
   bool operator()(const T* const rotation_ptr, const T* const translation_ptr, T* residuals) const {
     Eigen::Map<const Eigen::Quaternion<T>> rotation(rotation_ptr);
     Eigen::Map<const Eigen::Matrix<T, 3, 1>> translation(translation_ptr);
-
     Eigen::Matrix<T, 3, 1> p_diff = rotation * p_source_.cast<T>() + translation - p_target_.cast<T>();
     residuals[0] = p_diff.dot(norm_target_.cast<T>());
     return true;
@@ -85,6 +84,7 @@ struct PointToPlaneError {
     return (new ceres::AutoDiffCostFunction<PointToPlaneError, 1, 4, 3>(
         new PointToPlaneError(p_source, p_target, norm_target)));
   }
+
   const Eigen::Vector3d p_source_;
   const Eigen::Vector3d p_target_;
   const Eigen::Vector3d norm_target_;
@@ -120,5 +120,3 @@ struct GICPError {
   const Eigen::Vector3d p_target_;
   const Eigen::Matrix3d cov_target_;
 };
-
-#endif // _ICP_CERES_OPTIMIZER_HPP_

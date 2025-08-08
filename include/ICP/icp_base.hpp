@@ -1,5 +1,4 @@
-#ifndef _ICP_ICP_BASE_HPP_
-#define _ICP_ICP_BASE_HPP_
+#pragma once
 
 #include <memory>
 
@@ -13,11 +12,11 @@
 class ICP_BASE {
 public:
   using PointCloud = open3d::geometry::PointCloud;
-  using PointCloudPtr = typename std::shared_ptr<PointCloud>;
   using KDTree = open3d::geometry::KDTreeFlann;
+  using PointCloudPtr = typename std::shared_ptr<PointCloud>;
   using KDTreePtr = typename std::shared_ptr<KDTree>;
 
-  enum class SolverType { SVD, LeastSquares, LeastSquaresUsingCeres };
+  enum class SolverType { LeastSquares, LeastSquaresUsingCeres };
 
   ICP_BASE() {}
 
@@ -92,5 +91,3 @@ protected:
   double eigenvalue_rotation_threshold_ = 1e-6;
   double eigenvalue_translation_threshold_ = 1e-6;
 };
-
-#endif // _ICP_ICP_BASE_HPP_
