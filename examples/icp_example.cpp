@@ -8,28 +8,24 @@
 #include "ICP/gicp.hpp"
 #include "ICP/icp_plane.hpp"
 
+#include <glog/logging.h>
+
 enum class ICPMethod { GICP_Open3D, GICP_direct, GICP_iterative, P2P_ICP_Open3D, P2P_ICP_direct, P2P_ICP_iterative };
 
 std::string ICPMethodToString(ICPMethod method) {
   switch (method) {
-  case ICPMethod::GICP_Open3D: {
+  case ICPMethod::GICP_Open3D:
     return "GICP_Open3D";
-  }
-  case ICPMethod::GICP_direct: {
+  case ICPMethod::GICP_direct:
     return "GICP_direct";
-  }
-  case ICPMethod::GICP_iterative: {
+  case ICPMethod::GICP_iterative:
     return "GICP_iterative";
-  }
-  case ICPMethod::P2P_ICP_Open3D: {
+  case ICPMethod::P2P_ICP_Open3D:
     return "P2P_ICP_Open3D";
-  }
-  case ICPMethod::P2P_ICP_direct: {
+  case ICPMethod::P2P_ICP_direct:
     return "P2P_ICP_direct";
-  }
-  case ICPMethod::P2P_ICP_iterative: {
+  case ICPMethod::P2P_ICP_iterative:
     return "P2P_ICP_iterative";
-  }
   }
   return "";
 }
@@ -172,7 +168,7 @@ void runICP(const ICPParams& icp_params, Eigen::Matrix4d& T_source_target, const
         *icp_params.source_down,
         *icp_params.target_down,
         icp_params.max_correspondence_dist,
-        Eigen::Matrix4d::Identity(),
+        T_source_target,
         open3d::pipelines::registration::TransformationEstimationForGeneralizedICP(),
         open3d::pipelines::registration::ICPConvergenceCriteria(1e-6, 1e-6, icp_params.iteration));
     T_source_target = reg_result.transformation_;
@@ -201,7 +197,7 @@ void runICP(const ICPParams& icp_params, Eigen::Matrix4d& T_source_target, const
         *icp_params.source_down,
         *icp_params.target_down,
         icp_params.max_correspondence_dist,
-        Eigen::Matrix4d::Identity(),
+        T_source_target,
         open3d::pipelines::registration::TransformationEstimationPointToPlane(),
         open3d::pipelines::registration::ICPConvergenceCriteria(1e-6, 1e-6, icp_params.iteration));
     T_source_target = reg_result.transformation_;
@@ -237,6 +233,10 @@ void runICP(const ICPParams& icp_params, Eigen::Matrix4d& T_source_target, const
 
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
+  FLAGS_alsologtostderr = true;
+  FLAGS_colorlogtostderr = true;
+  FLAGS_stderrthreshold = 0;
+
   CLI::App app{"ICP Example"};
 
   // arguments

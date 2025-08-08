@@ -50,11 +50,10 @@ include_directories(
 
 # Define source files
 set(ICP_SOURCES
+    src/ceres_optimizer.cpp
     src/icp_base.cpp
-    src/icp.cpp
     src/icp_plane.cpp
     src/gicp.cpp
-    src/ceres_optimizer.cpp
     src/utils.cpp
 )
 

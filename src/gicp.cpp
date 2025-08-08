@@ -36,17 +36,6 @@ bool GICP::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   return true;
 }
 
-Eigen::Matrix4d GICP::computeTransform(const PointCloud& source_cloud, const PointCloud& target_cloud) {
-  switch (solver_type_) {
-  case SolverType::LeastSquares:
-    return computeTransformLeastSquares(source_cloud, target_cloud);
-  case SolverType::LeastSquaresUsingCeres:
-    return computeTransformLeastSquaresUsingCeres(source_cloud, target_cloud);
-  default:
-    return computeTransformLeastSquares(source_cloud, target_cloud);
-  }
-}
-
 Eigen::Matrix4d GICP::computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
                                                              const PointCloud& target_cloud) {
   optimizer_->clear();
@@ -74,58 +63,20 @@ Eigen::Matrix4d GICP::computeTransformLeastSquaresUsingCeres(const PointCloud& s
   return transform;
 }
 
-Eigen::Matrix4d GICP::computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud) {
-  Eigen::Matrix<double, 6, 6> JTJ;
-  Eigen::Matrix<double, 6, 1> JTr;
-  JTJ.setZero();
-  JTr.setZero();
-
-  int num_corr = correspondence_set_.size();
-
-#pragma omp parallel
-  {
-    Eigen::Matrix<double, 6, 6> JTJ_private;
-    Eigen::Matrix<double, 6, 1> JTr_private;
-    JTJ_private.setZero();
-    JTr_private.setZero();
-#pragma omp for nowait
-    for (int i = 0; i < num_corr; ++i) {
-      const auto& p = source_cloud.points_[correspondence_set_[i].first];
-      const auto& q = target_cloud.points_[correspondence_set_[i].second];
-      const auto& p_cov = source_cloud.covariances_[correspondence_set_[i].first];
-      const auto& q_cov = target_cloud.covariances_[correspondence_set_[i].second];
-      auto [JTJi, JTri] = compute_JTJ_and_JTr(p, p_cov, q, q_cov);
-      double wi = 1.0;
-      JTJ_private += wi * JTJi;
-      JTr_private += wi * JTri;
-    }
-#pragma omp critical
-    {
-      JTJ += JTJ_private;
-      JTr += JTr_private;
-    }
-  }
-
-  Eigen::Matrix<double, 6, 1> x_opt = JTJ.ldlt().solve(-JTr);
-  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
-  transform.block<3, 3>(0, 0) = createRotationMatrix(x_opt.tail(3));
-  transform.block<3, 1>(0, 3) = x_opt.head(3);
-  return transform;
-}
-
-std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>> GICP::compute_JTJ_and_JTr(
-    const Eigen::Vector3d& p, const Eigen::Matrix3d& p_cov, const Eigen::Vector3d& q, const Eigen::Matrix3d& q_cov) {
-  Eigen::Matrix<double, 6, 6> JTJ;
-  Eigen::Matrix<double, 6, 1> JTr;
+std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
+GICP::compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) {
+  const auto& p = source_cloud.points_[correspondence_set_[i].first];
+  const auto& q = target_cloud.points_[correspondence_set_[i].second];
+  const auto& p_cov = source_cloud.covariances_[correspondence_set_[i].first];
+  const auto& q_cov = target_cloud.covariances_[correspondence_set_[i].second];
 
   Eigen::Matrix<double, 3, 6> J;
   J.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
   J.block<3, 3>(0, 3) = -skewSymmetric(p);
 
-  Eigen::Matrix3d C_inv = (p_cov + q_cov).inverse();
-
-  JTJ = J.transpose() * C_inv * J;
-  JTr = J.transpose() * C_inv * (p - q);
+  const Eigen::Matrix3d C_inv = (p_cov + q_cov).inverse();
+  const Eigen::Matrix<double, 6, 6> JTJ = J.transpose() * C_inv * J;
+  const Eigen::Matrix<double, 6, 1> JTr = J.transpose() * C_inv * (p - q);
   return std::make_pair(JTJ, JTr);
 }
 

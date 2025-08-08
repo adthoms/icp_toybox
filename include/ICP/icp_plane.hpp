@@ -18,13 +18,10 @@ public:
 
 private:
   bool checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) override;
-  Eigen::Matrix4d computeTransform(const PointCloud& source_cloud, const PointCloud& target_cloud) override;
-  Eigen::Matrix4d computeTransformSVD(const PointCloud& source_cloud, const PointCloud& target_cloud);
-  Eigen::Matrix4d computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud);
-  Eigen::Matrix4d computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
-                                                         const PointCloud& target_cloud);
   std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
-  compute_JTJ_and_JTr(const Eigen::Vector3d& p, const Eigen::Vector3d& q, const Eigen::Vector3d& q_norm);
+  compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) override;
+  Eigen::Matrix4d computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
+                                                         const PointCloud& target_cloud) override;
 };
 
 #endif // _ICP_ICP_PLANE_HPP_

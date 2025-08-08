@@ -61,9 +61,19 @@ public:
   }
 
 protected:
-  void correspondenceMatching(const PointCloud& tmp_cloud);
   virtual bool checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) = 0;
-  virtual Eigen::Matrix4d computeTransform(const PointCloud& source_cloud, const PointCloud& target_cloud) = 0;
+  virtual std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
+  compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) = 0;
+  virtual Eigen::Matrix4d computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
+                                                                 const PointCloud& target_cloud) = 0;
+
+  void correspondenceMatching(const PointCloud& tmp_cloud);
+  Eigen::Matrix4d computeTransform(const PointCloud& source_cloud, const PointCloud& target_cloud);
+  Eigen::Matrix4d computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud);
+  void computeAugmentedHessianAndGradient(const Eigen::Matrix<double, 6, 6>& H,
+                                          const Eigen::Matrix<double, 6, 1>& g,
+                                          Eigen::MatrixXd& H_aug,
+                                          Eigen::VectorXd& g_aug);
   bool convergenceCheck(const Eigen::Matrix4d& transform_iter) const;
 
   SolverType solver_type_;
