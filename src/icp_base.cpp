@@ -3,6 +3,7 @@
 #include <omp.h>
 
 #include "ICP/icp_base.hpp"
+#include "ICP/utils.hpp"
 
 void ICP_BASE::align(PointCloud& source_cloud, PointCloud& target_cloud) {
   if (!checkValidity(source_cloud, target_cloud)) {
@@ -72,6 +73,112 @@ void ICP_BASE::correspondenceMatching(const PointCloud& tmp_cloud) {
   }
 
   matching_rmse_ = std::sqrt(matching_rmse_ / static_cast<double>(correspondence_set_.size()));
+}
+
+Eigen::Matrix4d ICP_BASE::computeTransform(const PointCloud& source_cloud, const PointCloud& target_cloud) {
+  switch (solver_type_) {
+  case SolverType::LeastSquares:
+    return computeTransformLeastSquares(source_cloud, target_cloud);
+  case SolverType::LeastSquaresUsingCeres:
+    return computeTransformLeastSquaresUsingCeres(source_cloud, target_cloud);
+  default:
+    return computeTransformLeastSquares(source_cloud, target_cloud);
+  }
+}
+
+Eigen::Matrix4d ICP_BASE::computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud) {
+  const int num_corr = correspondence_set_.size();
+  Eigen::Matrix<double, 6, 6> JTJ = Eigen::Matrix<double, 6, 6>::Zero();
+  Eigen::Matrix<double, 6, 1> JTr = Eigen::Matrix<double, 6, 1>::Zero();
+
+#pragma omp parallel
+  {
+    Eigen::Matrix<double, 6, 6> JTJ_private = Eigen::Matrix<double, 6, 6>::Zero();
+    Eigen::Matrix<double, 6, 1> JTr_private = Eigen::Matrix<double, 6, 1>::Zero();
+#pragma omp for nowait
+    for (int i = 0; i < num_corr; ++i) {
+      const auto [JTJi, JTri] = compute_JTJ_and_JTr(source_cloud, target_cloud, i);
+      JTJ_private += JTJi;
+      JTr_private += JTri;
+    }
+#pragma omp critical
+    {
+      JTJ += JTJ_private;
+      JTr += JTr_private;
+    }
+  }
+
+  Eigen::MatrixXd H_aug;
+  Eigen::VectorXd g_aug;
+  computeAugmentedHessianAndGradient(JTJ, JTr, H_aug, g_aug);
+
+  // solve for x* = {t*, r*}
+  const Eigen::VectorXd x_opt = H_aug.ldlt().solve(-g_aug);
+
+  // construct the transformation matrix from x*
+  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
+  transform.block<3, 3>(0, 0) = createRotationMatrix(x_opt.segment<3>(3));
+  transform.block<3, 1>(0, 3) = x_opt.head(3);
+  return transform;
+}
+
+void ICP_BASE::computeAugmentedHessianAndGradient(const Eigen::Matrix<double, 6, 6>& H,
+                                                  const Eigen::Matrix<double, 6, 1>& g,
+                                                  Eigen::MatrixXd& H_aug,
+                                                  Eigen::VectorXd& g_aug) {
+  // lambda expression for solving {V, Σ} of H = V Σ V^T where H is PD
+  auto compute_svd = [](const Eigen::Matrix3d& H) -> std::pair<Eigen::Matrix3d, Eigen::Vector3d> {
+    Eigen::JacobiSVD<Eigen::Matrix3d> svd(H, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    return std::make_pair(svd.matrixU(), svd.singularValues());
+  };
+
+  // compute eigenvectors and eigenvalues of the hessian from P2P-ICP
+  const Eigen::Matrix3d& H_tt = H.block<3, 3>(0, 0);
+  const Eigen::Matrix3d& H_rr = H.block<3, 3>(3, 3);
+  const auto [V_t, Sigma_t] = compute_svd(H_tt);
+  const auto [V_r, Sigma_r] = compute_svd(H_rr);
+
+  // count number of constraints
+  const int num_trans_constraints = std::count_if(Sigma_t.data(), Sigma_t.data() + 3, [this](double v) {
+    // std::cout << "Sigma_t " << v << std::endl;
+    return v < eigenvalue_translation_threshold_;
+  });
+  const int num_rot_constraints = std::count_if(Sigma_r.data(), Sigma_r.data() + 3, [this](double v) {
+    // std::cout << "Sigma_r " << v << std::endl;
+    return v < eigenvalue_rotation_threshold_;
+  });
+  const int c = num_trans_constraints + num_rot_constraints;
+
+  // construct constraint matrix
+  Eigen::MatrixXd C = Eigen::MatrixXd::Zero(c, 6);
+  if (c > 0) {
+    // check if v_j ∈ {V_t, V_r} is in the null space of V_t and V_r by thresholding the eigenvalues
+    int idx = 0;
+    for (int j = 0; j < 3; ++j) {
+      if (Sigma_t(j) < eigenvalue_translation_threshold_) {
+        C.block<1, 3>(idx, 0) = V_t.col(j).transpose();
+        idx++;
+      }
+    }
+    for (int j = 0; j < 3; ++j) {
+      if (Sigma_r(j) < eigenvalue_rotation_threshold_) {
+        C.block<1, 3>(idx, 3) = V_r.col(j).transpose();
+        idx++;
+      }
+    }
+  }
+
+  // resize hessian and gradient to accommodate constraints
+  H_aug.resize(6 + c, 6 + c);
+  g_aug.resize(6 + c);
+  H_aug.setZero();
+  g_aug.setZero();
+
+  // augment hessian to satisfy KKT equations of equality-constrained optimization
+  H_aug.block<6, 6>(0, 0) = H;
+  H_aug.block(0, 6, 6, c) = C.transpose();
+  H_aug.block(6, 0, c, 6) = C;
+  g_aug.head<6>() = g;
 }
 
 bool ICP_BASE::convergenceCheck(const Eigen::Matrix4d& transform_iter) const {

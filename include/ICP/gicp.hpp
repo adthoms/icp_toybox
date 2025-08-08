@@ -18,19 +18,16 @@ public:
   }
 
 private:
-  double cov_epsilon_ = 5e-3;
-
   bool checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) override;
-  Eigen::Matrix4d computeTransform(const PointCloud& source_cloud, const PointCloud& target_cloud) override;
-  Eigen::Matrix4d computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud);
+  std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
+  compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) override;
   Eigen::Matrix4d computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
-                                                         const PointCloud& target_cloud);
-  std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>> compute_JTJ_and_JTr(const Eigen::Vector3d& p,
-                                                                                          const Eigen::Matrix3d& p_cov,
-                                                                                          const Eigen::Vector3d& q,
-                                                                                          const Eigen::Matrix3d& q_cov);
+                                                         const PointCloud& target_cloud) override;
+
   void computeCovariancesFromNormals(PointCloud& cloud);
   Eigen::Matrix3d getRotationFromNormal(const Eigen::Vector3d& normal);
+
+  double cov_epsilon_ = 5e-3;
 };
 
 #endif // _ICP_GICP_HPP_
