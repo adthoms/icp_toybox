@@ -1,10 +1,21 @@
 # ICP Toybox
 
-This repository implements ICP, Point-to-Plane ICP, and G-ICP algorithms using direct and iterative solvers.
+This repository implements Point-to-Plane ICP (P2P-ICP) and G-ICP algorithms using custom direct (i.e., least squares) and iterative (i.e., non-linear least squares) solvers. Custom direct solvers implement the active geometric degeneracy technique described in IV-A-1 of the following paper:
+```bibtex
+@ARTICLE{tuna2025informed,
+  author={Tuna, Turcan and Nubert, Julian and Pfreundschuh, Patrick and Cadena, Cesar and Khattak, Shehryar and Hutter, Marco},
+  journal={IEEE Transactions on Field Robotics},
+  title={Informed, Constrained, Aligned: A Field Analysis on Degeneracy-Aware Point Cloud Registration in the Wild},
+  year={2025},
+  volume={2},
+  number={},
+  pages={485-515},
+  doi={10.1109/TFR.2025.3576053}
+}
+```
 
 ## References
 
-- ICP Algorithm : [Least-Squares Rigid Motion Using SVD](https://igl.ethz.ch/projects/ARAP/svd_rot.pdf) by Olga Sorkine-Hornung and Michael Rabinovich.
 - ICP(point to plane) Algorithm : [Linear Least-Squares Optimization for Point-to-Plane ICP Surface Registration](https://www.comp.nus.edu.sg/~lowkl/publications/lowk_point-to-plane_icp_techrep.pdf) by Kok-Lim Low.
 - GICP Algorithm : [Generalized-ICP](https://www.roboticsproceedings.org/rss05/p21.pdf) by Aleksandr V. Segal, Dirk Haehnel and Sebastian Thrun.
 
@@ -128,7 +139,7 @@ catkin build -j$(nproc) icp_toybox
 
 ## Examples
 
-Run GICP and P2P-ICP algorithms, using Open3D and custom direct and iterative solvers:
+Run P2P-ICP and GICP algorithms using custom solvers, which are benchmarked against Open3D's implementation:
 ```bash
 cd ~/catkin_ws/build/icp_toybox
 ./icp_example \
@@ -151,8 +162,9 @@ Examples include:
 ```bash
 ./icp_example \
       --source_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/source.pcd \
-      --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/target.pcd
-      --eigenvalue_translation_threshold=10 # prevents motion update in degenerate z-dir
+      --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/target.pcd \
+      --eigenvalue_translation_threshold=10 \
+      --eigenvalue_rotation_threshold=100
 ```
 The point clouds used for the **Primitive** example can be visualized and generated as follows:
 ```bash
