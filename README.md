@@ -139,7 +139,7 @@ catkin build -j$(nproc) icp_toybox
 
 ## Examples
 
-Run P2P-ICP and G-ICP algorithms using custom solvers, which are benchmarked against Open3D's implementation:
+Run P2P-ICP and G-ICP algorithms using custom direct solvers, which are benchmarked against Open3D's implementation:
 ```bash
 cd ~/catkin_ws/build/icp_toybox
 ./icp_example \
@@ -162,7 +162,7 @@ Examples include:
 ```bash
 ./icp_example \
       --source_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/source.pcd \
-      --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/target.pcd \
+      --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/target.pcd
 ```
 For this example, we expect degeneracy in `z` and `yaw` and directions. To enable AGDM, set the following flags for P2P-ICP:
 ```bash
