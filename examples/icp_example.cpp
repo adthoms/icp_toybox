@@ -278,12 +278,8 @@ int main(int argc, char* argv[]) {
 
   // ICP
   std::cout << "Running ICP methods..." << std::endl;
-  const std::vector<ICPMethod> icp_methods = {ICPMethod::GICP_Open3D,
-                                              ICPMethod::GICP_direct,
-                                              ICPMethod::GICP_iterative,
-                                              ICPMethod::P2P_ICP_Open3D,
-                                              ICPMethod::P2P_ICP_direct,
-                                              ICPMethod::P2P_ICP_iterative};
+  const std::vector<ICPMethod> icp_methods = {
+      ICPMethod::GICP_Open3D, ICPMethod::GICP_direct, ICPMethod::P2P_ICP_Open3D, ICPMethod::P2P_ICP_direct};
   for (const auto& method : icp_methods) {
     runICP(icp_params, T_source_target, method);
   }
