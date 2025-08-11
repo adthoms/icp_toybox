@@ -88,31 +88,33 @@ Eigen::Matrix4d ICP_BASE::computeTransform(const PointCloud& source_cloud, const
 
 Eigen::Matrix4d ICP_BASE::computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud) {
   const int num_corr = correspondence_set_.size();
-  Eigen::Matrix6d JTJ = Eigen::Matrix6d::Zero();
-  Eigen::Vector6d JTr = Eigen::Vector6d::Zero();
+  Eigen::Matrix6d H = Eigen::Matrix6d::Zero();
+  Eigen::Vector6d g = Eigen::Vector6d::Zero();
 
   // construct Hessian and gradient
 #pragma omp parallel
   {
-    Eigen::Matrix6d JTJ_private = Eigen::Matrix6d::Zero();
-    Eigen::Vector6d JTr_private = Eigen::Vector6d::Zero();
+    Eigen::Matrix6d H_private = Eigen::Matrix6d::Zero();
+    Eigen::Vector6d g_private = Eigen::Vector6d::Zero();
 #pragma omp for nowait
     for (int i = 0; i < num_corr; ++i) {
-      const auto [JTJi, JTri] = compute_JTJ_and_JTr(source_cloud, target_cloud, i);
-      JTJ_private += JTJi;
-      JTr_private += JTri;
+      Eigen::Matrix6d Hi;
+      Eigen::Vector6d gi;
+      computeHessianAndGradient(source_cloud, target_cloud, i, Hi, gi);
+      H_private += Hi;
+      g_private += gi;
     }
 #pragma omp critical
     {
-      JTJ += JTJ_private;
-      JTr += JTr_private;
+      H += H_private;
+      g += g_private;
     }
   }
 
   // apply active geometric degeneracy mitigation step
   Eigen::MatrixXd H_aug;
   Eigen::VectorXd g_aug;
-  computeAugmentedHessianAndGradient(JTJ, JTr, H_aug, g_aug);
+  computeAugmentedHessianAndGradient(H, g, H_aug, g_aug);
 
   // solve for x* = {t*, r*}
   const Eigen::VectorXd x_opt = H_aug.ldlt().solve(-g_aug);

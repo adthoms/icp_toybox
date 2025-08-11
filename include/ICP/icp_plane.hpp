@@ -13,8 +13,11 @@ public:
 
 private:
   bool checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) override;
-  std::pair<Eigen::Matrix6d, Eigen::Vector6d>
-  compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) override;
+  void computeHessianAndGradient(const PointCloud& source_cloud,
+                                 const PointCloud& target_cloud,
+                                 int i,
+                                 Eigen::Matrix6d& H,
+                                 Eigen::Vector6d& g) override;
   Eigen::Matrix4d computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
                                                          const PointCloud& target_cloud) override;
 };

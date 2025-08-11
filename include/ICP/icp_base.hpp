@@ -62,8 +62,11 @@ public:
 
 protected:
   virtual bool checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) = 0;
-  virtual std::pair<Eigen::Matrix6d, Eigen::Vector6d>
-  compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) = 0;
+  virtual void computeHessianAndGradient(const PointCloud& source_cloud,
+                                         const PointCloud& target_cloud,
+                                         int i,
+                                         Eigen::Matrix6d& H,
+                                         Eigen::Vector6d& g) = 0;
   virtual Eigen::Matrix4d computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
                                                                  const PointCloud& target_cloud) = 0;
 
