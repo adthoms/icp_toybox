@@ -3,7 +3,7 @@
 #include <omp.h>
 
 #include "ICP/icp_base.hpp"
-#include "ICP/utils.hpp"
+#include "ICP/utils.h"
 
 void ICP_BASE::align(PointCloud& source_cloud, PointCloud& target_cloud) {
   if (!checkValidity(source_cloud, target_cloud)) {

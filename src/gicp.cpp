@@ -5,7 +5,7 @@
 #include <omp.h>
 
 #include "ICP/gicp.hpp"
-#include "ICP/utils.hpp"
+#include "ICP/utils.h"
 
 bool GICP::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   if (source_cloud.IsEmpty() || target_cloud.IsEmpty()) {
