@@ -5,7 +5,7 @@
 #include <omp.h>
 
 #include "ICP/icp_plane.hpp"
-#include "ICP/utils.hpp"
+#include "ICP/utils.h"
 
 bool ICP_PLANE::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   if (source_cloud.IsEmpty() || target_cloud.IsEmpty()) {
@@ -21,17 +21,18 @@ bool ICP_PLANE::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud
   return true;
 }
 
-std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
-ICP_PLANE::compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) {
+void ICP_PLANE::computeHessianAndGradient(
+    const PointCloud& source_cloud, const PointCloud& target_cloud, int i, Eigen::Matrix6d& H, Eigen::Vector6d& g) {
   const auto& p = source_cloud.points_[correspondence_set_[i].first];
   const auto& q = target_cloud.points_[correspondence_set_[i].second];
   const auto& q_norm = target_cloud.normals_[correspondence_set_[i].second];
 
-  Eigen::Matrix<double, 6, 1> JT;
+  Eigen::Vector6d JT;
   JT.block<3, 1>(0, 0) = q_norm;
   JT.block<3, 1>(3, 0) = p.cross(q_norm);
   double r = (p - q).transpose() * q_norm;
-  return std::make_pair(JT * JT.transpose(), JT * r);
+  H = JT * JT.transpose();
+  g = JT * r;
 }
 
 Eigen::Matrix4d ICP_PLANE::computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,

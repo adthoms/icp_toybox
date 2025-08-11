@@ -54,7 +54,6 @@ set(ICP_SOURCES
     src/icp_base.cpp
     src/icp_plane.cpp
     src/gicp.cpp
-    src/utils.cpp
 )
 
 # Create ICP library

@@ -5,7 +5,7 @@
 #include <omp.h>
 
 #include "ICP/gicp.hpp"
-#include "ICP/utils.hpp"
+#include "ICP/utils.h"
 
 bool GICP::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   if (source_cloud.IsEmpty() || target_cloud.IsEmpty()) {
@@ -36,8 +36,8 @@ bool GICP::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   return true;
 }
 
-std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
-GICP::compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) {
+void GICP::computeHessianAndGradient(
+    const PointCloud& source_cloud, const PointCloud& target_cloud, int i, Eigen::Matrix6d& H, Eigen::Vector6d& g) {
   const auto& p = source_cloud.points_[correspondence_set_[i].first];
   const auto& q = target_cloud.points_[correspondence_set_[i].second];
   const auto& p_cov = source_cloud.covariances_[correspondence_set_[i].first];
@@ -48,9 +48,8 @@ GICP::compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& targ
   J.block<3, 3>(0, 3) = -skewSymmetric(p);
 
   const Eigen::Matrix3d C_inv = (p_cov + q_cov).inverse();
-  const Eigen::Matrix<double, 6, 6> JTJ = J.transpose() * C_inv * J;
-  const Eigen::Matrix<double, 6, 1> JTr = J.transpose() * C_inv * (p - q);
-  return std::make_pair(JTJ, JTr);
+  H = J.transpose() * C_inv * J;
+  g = J.transpose() * C_inv * (p - q);
 }
 
 Eigen::Matrix4d GICP::computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
