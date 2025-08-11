@@ -8,6 +8,7 @@
 #include <open3d/geometry/KDTreeFlann.h>
 
 #include "ICP/ceres_optimizer.hpp"
+#include "ICP/types.h"
 
 class ICP_BASE {
 public:
@@ -61,7 +62,7 @@ public:
 
 protected:
   virtual bool checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) = 0;
-  virtual std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
+  virtual std::pair<Eigen::Matrix6d, Eigen::Vector6d>
   compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) = 0;
   virtual Eigen::Matrix4d computeTransformLeastSquaresUsingCeres(const PointCloud& source_cloud,
                                                                  const PointCloud& target_cloud) = 0;
@@ -69,8 +70,8 @@ protected:
   void correspondenceMatching(const PointCloud& tmp_cloud);
   Eigen::Matrix4d computeTransform(const PointCloud& source_cloud, const PointCloud& target_cloud);
   Eigen::Matrix4d computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud);
-  void computeAugmentedHessianAndGradient(const Eigen::Matrix<double, 6, 6>& H,
-                                          const Eigen::Matrix<double, 6, 1>& g,
+  void computeAugmentedHessianAndGradient(const Eigen::Matrix6d& H,
+                                          const Eigen::Vector6d& g,
                                           Eigen::MatrixXd& H_aug,
                                           Eigen::VectorXd& g_aug);
   bool convergenceCheck(const Eigen::Matrix4d& transform_iter) const;

@@ -88,14 +88,14 @@ Eigen::Matrix4d ICP_BASE::computeTransform(const PointCloud& source_cloud, const
 
 Eigen::Matrix4d ICP_BASE::computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud) {
   const int num_corr = correspondence_set_.size();
-  Eigen::Matrix<double, 6, 6> JTJ = Eigen::Matrix<double, 6, 6>::Zero();
-  Eigen::Matrix<double, 6, 1> JTr = Eigen::Matrix<double, 6, 1>::Zero();
+  Eigen::Matrix6d JTJ = Eigen::Matrix6d::Zero();
+  Eigen::Vector6d JTr = Eigen::Vector6d::Zero();
 
   // construct Hessian and gradient
 #pragma omp parallel
   {
-    Eigen::Matrix<double, 6, 6> JTJ_private = Eigen::Matrix<double, 6, 6>::Zero();
-    Eigen::Matrix<double, 6, 1> JTr_private = Eigen::Matrix<double, 6, 1>::Zero();
+    Eigen::Matrix6d JTJ_private = Eigen::Matrix6d::Zero();
+    Eigen::Vector6d JTr_private = Eigen::Vector6d::Zero();
 #pragma omp for nowait
     for (int i = 0; i < num_corr; ++i) {
       const auto [JTJi, JTri] = compute_JTJ_and_JTr(source_cloud, target_cloud, i);
@@ -124,8 +124,8 @@ Eigen::Matrix4d ICP_BASE::computeTransformLeastSquares(const PointCloud& source_
   return transform;
 }
 
-void ICP_BASE::computeAugmentedHessianAndGradient(const Eigen::Matrix<double, 6, 6>& H,
-                                                  const Eigen::Matrix<double, 6, 1>& g,
+void ICP_BASE::computeAugmentedHessianAndGradient(const Eigen::Matrix6d& H,
+                                                  const Eigen::Vector6d& g,
                                                   Eigen::MatrixXd& H_aug,
                                                   Eigen::VectorXd& g_aug) {
   // lambda expression for solving {V, Σ} of H = V Σ V^T where H is PD

@@ -21,13 +21,13 @@ bool ICP_PLANE::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud
   return true;
 }
 
-std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
+std::pair<Eigen::Matrix6d, Eigen::Vector6d>
 ICP_PLANE::compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) {
   const auto& p = source_cloud.points_[correspondence_set_[i].first];
   const auto& q = target_cloud.points_[correspondence_set_[i].second];
   const auto& q_norm = target_cloud.normals_[correspondence_set_[i].second];
 
-  Eigen::Matrix<double, 6, 1> JT;
+  Eigen::Vector6d JT;
   JT.block<3, 1>(0, 0) = q_norm;
   JT.block<3, 1>(3, 0) = p.cross(q_norm);
   double r = (p - q).transpose() * q_norm;

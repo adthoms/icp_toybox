@@ -36,7 +36,7 @@ bool GICP::checkValidity(PointCloud& source_cloud, PointCloud& target_cloud) {
   return true;
 }
 
-std::pair<Eigen::Matrix<double, 6, 6>, Eigen::Matrix<double, 6, 1>>
+std::pair<Eigen::Matrix6d, Eigen::Vector6d>
 GICP::compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& target_cloud, int i) {
   const auto& p = source_cloud.points_[correspondence_set_[i].first];
   const auto& q = target_cloud.points_[correspondence_set_[i].second];
@@ -48,8 +48,8 @@ GICP::compute_JTJ_and_JTr(const PointCloud& source_cloud, const PointCloud& targ
   J.block<3, 3>(0, 3) = -skewSymmetric(p);
 
   const Eigen::Matrix3d C_inv = (p_cov + q_cov).inverse();
-  const Eigen::Matrix<double, 6, 6> JTJ = J.transpose() * C_inv * J;
-  const Eigen::Matrix<double, 6, 1> JTr = J.transpose() * C_inv * (p - q);
+  const Eigen::Matrix6d JTJ = J.transpose() * C_inv * J;
+  const Eigen::Vector6d JTr = J.transpose() * C_inv * (p - q);
   return std::make_pair(JTJ, JTr);
 }
 
