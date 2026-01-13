@@ -21,11 +21,11 @@ This repository implements Point-to-Plane ICP (P2P-ICP) and G-ICP algorithms usi
 
 ## Dependencies
 
-- [Ubuntu 20.04](https://releases.ubuntu.com/focal/)
+- [Ubuntu 24.04](https://releases.ubuntu.com/noble/)
 - [Gflags 2.2.2](https://github.com/gflags/gflags)
 - [Glog 0.6.0](https://github.com/google/glog)
 - [Ceres-Solver 2.2.0](http://ceres-solver.org/)
-- [Open3D 0.17.0](http://www.open3d.org/)
+- [Open3D 0.19.0](http://www.open3d.org/)
 
 ## Install
 
@@ -40,16 +40,26 @@ sudo apt-get install libatlas-base-dev libeigen3-dev libsuitesparse-dev
 [CMake](https://apt.kitware.com/)
 
 ```bash
+# Keyring
 sudo apt-get update
-sudo apt-get install ca-certificates gpg wget
-test -f /usr/share/doc/kitware-archive-keyring/copyright || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+sudo apt-get install -y ca-certificates gpg wget
+test -f /usr/share/doc/kitware-archive-keyring/copyright || \
+  wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | \
+  gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+
+# Noble main repo
+echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ noble main' | \
+  sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+
 sudo apt-get update
-test -f /usr/share/doc/kitware-archive-keyring/copyright || sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
-sudo apt-get install kitware-archive-keyring
-echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal-rc main' | sudo tee -a /etc/apt/sources.list.d/kitware.list >/dev/null
-sudo apt-get update
-sudo apt install cmake=3.27.7-0kitware1ubuntu20.04.1 cmake-data=3.27.7-0kitware1ubuntu20.04.1 # CMake>=3.26 required
+
+# Ensure keyring package is installed/updated
+sudo apt-get install -y kitware-archive-keyring
+
+# Install CMake 3.31
+sudo apt-get install -y \
+  cmake=3.31.1-0kitware1ubuntu24.04.1 \
+  cmake-data=3.31.1-0kitware1ubuntu24.04.1
 ```
 
 ### Libraries
@@ -112,8 +122,8 @@ sudo make install
 
 ```bash
 cd ~/Software
-git clone --depth 1 --branch v0.17.0 https://github.com/isl-org/Open3D
-cd Open3d && ./util/install_deps_ubuntu.sh
+git clone --depth 1 --branch v0.19.0 https://github.com/isl-org/Open3D
+cd Open3D && ./util/install_deps_ubuntu.sh
 mkdir -p build && cd build
 cmake -DCMAKE_CXX_STANDARD=17 \
       -DCMAKE_CXX_STANDARD_REQUIRED=ON \
@@ -132,16 +142,16 @@ sudo make install
 ## Build
 
 ```bash
-cd ~/catkin_ws/src
+cd ~/Projects/ros2_ws/src
 git clone git@github.com:adthoms/icp_toybox.git
-catkin build -j$(nproc) icp_toybox
+colcon build --packages-select icp_toybox
 ```
 
 ## Examples
 
 Run P2P-ICP and G-ICP algorithms using custom direct solvers, which are benchmarked against Open3D's implementation:
 ```bash
-cd ~/catkin_ws/build/icp_toybox
+cd ~/Projects/ros2_ws/build/icp_toybox
 ./icp_example \
       --source_cloud_path=/path/to/source_cloud*.bin \
       --target_cloud_path=/path/to/source_cloud*.bin
@@ -154,15 +164,15 @@ Examples include:
 ### [KITTI](http://www.cvlibs.net/datasets/kitti/)
 ```bash
 ./icp_example \
-      --source_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/kitti/0000000240.bin \
-      --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/kitti/0000000250.bin
+      --source_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/kitti/0000000240.bin \
+      --target_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/kitti/0000000250.bin
 ```
 
 ### Primitive
 ```bash
 ./icp_example \
-      --source_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/source.pcd \
-      --target_cloud_path=/home/fieldai/Projects/ros_ws/src/icp_toybox/data/primitive/target.pcd
+      --source_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/primitive/source.pcd \
+      --target_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/primitive/target.pcd
 ```
 For this example, we expect degeneracy in `z` and `yaw` and directions. To enable AGDM, set the following flags for P2P-ICP:
 ```bash
@@ -176,7 +186,7 @@ Note that these values were emperically determined by visually observing degener
 
 The point clouds used for the **Primitive** example can be visualized and generated as follows:
 ```bash
-cd ~/catkin_ws/build/icp_toybox/scripts
+cd ~/Projects/ros2_ws/build/icp_toybox/scripts
 python generate_primitive_point_clouds.py --visualize --save
 ```
 See the full list of arguments with descriptions:
@@ -197,4 +207,4 @@ sudo apt-get remove libgoogle-glog-dev libgoogle-glog0v5
 sudo apt-get remove libgflags-dev  libgflags2.2
 ```
 
-2. Ensure only one version (>=3.8) of python3 is installed.
+2. Ensure only one version (>=3.12) of python3 is installed.

@@ -4,11 +4,12 @@
   <version>1.0.0</version>
   <description>ICP Toybox</description>
 
-  <maintainer email="adthoms@ucla.edu">Alexander Thoms</maintainer>
+  <maintainer email="alexander.thoms@fieldai.com">Alexander Thoms</maintainer>
   <license>MIT</license>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <export>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>
