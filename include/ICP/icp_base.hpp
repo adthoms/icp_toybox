@@ -73,6 +73,7 @@ protected:
   void correspondenceMatching(const PointCloud& tmp_cloud);
   Eigen::Matrix4d computeTransform(const PointCloud& source_cloud, const PointCloud& target_cloud);
   Eigen::Matrix4d computeTransformLeastSquares(const PointCloud& source_cloud, const PointCloud& target_cloud);
+  std::pair<Eigen::Matrix3d, Eigen::Vector3d> computeEVD(const Eigen::Matrix3d& H);
   void computeAugmentedHessianAndGradient(const Eigen::Matrix6d& H,
                                           const Eigen::Vector6d& g,
                                           Eigen::MatrixXd& H_aug,
@@ -94,4 +95,5 @@ protected:
   double matching_rmse_prev_ = std::numeric_limits<double>::max();
   double eigenvalue_rotation_threshold_ = 1e-6;
   double eigenvalue_translation_threshold_ = 1e-6;
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver_;
 };
