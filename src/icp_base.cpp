@@ -126,21 +126,20 @@ Eigen::Matrix4d ICP_BASE::computeTransformLeastSquares(const PointCloud& source_
   return transform;
 }
 
+std::pair<Eigen::Matrix3d, Eigen::Vector3d> ICP_BASE::computeEVD(const Eigen::Matrix3d& H) {
+  eigensolver_.computeDirect(H);
+  return std::make_pair(eigensolver_.eigenvectors(), eigensolver_.eigenvalues());
+}
+
 void ICP_BASE::computeAugmentedHessianAndGradient(const Eigen::Matrix6d& H,
                                                   const Eigen::Vector6d& g,
                                                   Eigen::MatrixXd& H_aug,
                                                   Eigen::VectorXd& g_aug) {
-  // lambda expression for solving {V, Σ} of H = V Σ V^T where H is PD
-  auto compute_svd = [](const Eigen::Matrix3d& H) -> std::pair<Eigen::Matrix3d, Eigen::Vector3d> {
-    Eigen::JacobiSVD<Eigen::Matrix3d> svd(H, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    return std::make_pair(svd.matrixU(), svd.singularValues());
-  };
-
   // compute eigenvectors and eigenvalues of the hessian from P2P-ICP
   const Eigen::Matrix3d& H_tt = H.block<3, 3>(0, 0);
   const Eigen::Matrix3d& H_rr = H.block<3, 3>(3, 3);
-  const auto [V_t, Sigma_t] = compute_svd(H_tt);
-  const auto [V_r, Sigma_r] = compute_svd(H_rr);
+  const auto [V_t, Sigma_t] = computeEVD(H_tt);
+  const auto [V_r, Sigma_r] = computeEVD(H_rr);
 
   // count number of constraints
   const int num_trans_constraints = std::count_if(Sigma_t.data(), Sigma_t.data() + 3, [this](double v) {

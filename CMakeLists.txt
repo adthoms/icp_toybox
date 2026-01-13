@@ -1,5 +1,9 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.5)
 project(icp_toybox)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -11,17 +15,13 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
-# Compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -DDEBUG")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -DNDEBUG")
-
 # Find required packages
+find_package(ament_cmake REQUIRED)
 find_package(gflags 2.2.2 REQUIRED)
 find_package(glog 0.6.0 REQUIRED)
 find_package(Ceres 2.2.0 REQUIRED)
 find_package(Eigen3 3.3.7 REQUIRED)
-find_package(Open3D 0.17.0 REQUIRED)
+find_package(Open3D 0.19.0 REQUIRED)
 find_package(OpenMP REQUIRED)
 if(OpenMP_CXX_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -37,7 +37,7 @@ FetchContent_Declare(
     cli11_lib
     QUIET
     GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-    GIT_TAG v2.3.2
+    GIT_TAG v2.6.1
 )
 FetchContent_MakeAvailable(cli11_lib)
 
@@ -57,10 +57,16 @@ set(ICP_SOURCES
 )
 
 # Create ICP library
-add_library(${PROJECT_NAME} ${ICP_SOURCES})
+add_library(${PROJECT_NAME} SHARED ${ICP_SOURCES})
+
+# Set include directories for the library
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
 
 # Link libraries to the main library
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME} PUBLIC
     ${Open3D_LIBRARIES}
     Ceres::ceres
 )
@@ -72,9 +78,21 @@ target_link_libraries(icp_example PRIVATE
     CLI11::CLI11
 )
 
-# Install examples
-install(TARGETS icp_example
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+# Install targets
+install(TARGETS
+  ${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )
+
+install(TARGETS
+  icp_example
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY include/
+  DESTINATION include
+)
+
+ament_package()
