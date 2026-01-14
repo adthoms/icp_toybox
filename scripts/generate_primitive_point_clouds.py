@@ -104,7 +104,7 @@ def main(args):
         type=float,
         nargs=6,
         metavar=("ROLL", "PITCH", "YAW", "X", "Y", "Z"),
-        default=[0.0, 0.0, 0.0, 0.0, 0.0, 5.0],
+        default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.5],
         help="Transformation T_SOURCE_TARGET as a list: roll pitch yaw x y z.",
     )
     parser.add_argument(
@@ -122,7 +122,7 @@ def main(args):
     parser.add_argument(
         "--num_points",
         type=int,
-        default=1000,
+        default=10000,
         help="Number of points to sample from the cylinder.",
     )
     parser.add_argument(
