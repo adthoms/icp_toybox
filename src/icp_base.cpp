@@ -135,37 +135,41 @@ void ICP_BASE::computeAugmentedHessianAndGradient(const Eigen::Matrix6d& H,
                                                   const Eigen::Vector6d& g,
                                                   Eigen::MatrixXd& H_aug,
                                                   Eigen::VectorXd& g_aug) {
-  // compute eigenvectors and eigenvalues of the hessian from P2P-ICP
-  const Eigen::Matrix3d& H_tt = H.block<3, 3>(0, 0);
-  const Eigen::Matrix3d& H_rr = H.block<3, 3>(3, 3);
-  const auto [V_t, Sigma_t] = computeEVD(H_tt);
-  const auto [V_r, Sigma_r] = computeEVD(H_rr);
+  // Extract blocks of information matrix
+  const Eigen::Matrix3d& H_rr = H.block<3, 3>(0, 0);
+  const Eigen::Matrix3d& H_tt = H.block<3, 3>(3, 3);
+  const Eigen::Matrix3d& H_rt = H.block<3, 3>(0, 3);
+  const Eigen::Matrix3d& H_tr = H_rt.transpose();
 
-  // count number of constraints
-  const int num_trans_constraints = std::count_if(Sigma_t.data(), Sigma_t.data() + 3, [this](double v) {
-    // std::cout << "Sigma_t " << v << std::endl;
-    return v < eigenvalue_translation_threshold_;
-  });
-  const int num_rot_constraints = std::count_if(Sigma_r.data(), Sigma_r.data() + 3, [this](double v) {
-    // std::cout << "Sigma_r " << v << std::endl;
-    return v < eigenvalue_rotation_threshold_;
-  });
-  const int c = num_trans_constraints + num_rot_constraints;
+  // Decouple subspaces via Schur complement of information matrix
+  const Eigen::Matrix3d S_r = H_rr - H_rt * H_tt.inverse() * H_tr;
+  const Eigen::Matrix3d S_t = H_tt - H_tr * H_rr.inverse() * H_rt;
+
+  // Compute EVD of rotation and translation subspaces
+  const auto [V_r, Lambda_r] = computeEVD(S_r);
+  const auto [V_t, Lambda_t] = computeEVD(S_t);
+
+  // Count number of constraints
+  const int c = (Lambda_r.array() < eigenvalue_rotation_threshold_).count() +
+      (Lambda_t.array() < eigenvalue_translation_threshold_).count();
+
+  // Determine degeneracy status
+  const bool degeneracy_status = (c > 0) ? true : false;
 
   // construct constraint matrix
   Eigen::MatrixXd C = Eigen::MatrixXd::Zero(c, 6);
-  if (c > 0) {
-    // check if v_j ∈ {V_t, V_r} is in the null space of V_t and V_r by thresholding the eigenvalues
+  if (degeneracy_status) {
+    // Check if v_i ∈ {V_t, V_r} is in the null space of V_t and V_r by thresholding the eigenvalues
     int idx = 0;
-    for (int j = 0; j < 3; ++j) {
-      if (Sigma_t(j) < eigenvalue_translation_threshold_) {
-        C.block<1, 3>(idx, 0) = V_t.col(j).transpose();
+    for (int i = 0; i < 3; i++) {
+      if (Lambda_t(i) < eigenvalue_translation_threshold_) {
+        C.block<1, 3>(idx, 0) = V_t.col(i).transpose();
         idx++;
       }
     }
-    for (int j = 0; j < 3; ++j) {
-      if (Sigma_r(j) < eigenvalue_rotation_threshold_) {
-        C.block<1, 3>(idx, 3) = V_r.col(j).transpose();
+    for (int i = 0; i < 3; i++) {
+      if (Lambda_r(i) < eigenvalue_rotation_threshold_) {
+        C.block<1, 3>(idx, 3) = V_r.col(i).transpose();
         idx++;
       }
     }
@@ -182,6 +186,12 @@ void ICP_BASE::computeAugmentedHessianAndGradient(const Eigen::Matrix6d& H,
   H_aug.block(0, 6, 6, c) = C.transpose();
   H_aug.block(6, 0, c, 6) = C;
   g_aug.head<6>() = g;
+
+  // Verbose logging
+  if (verbose_) {
+    std::cout << "GDM Info: status=" << degeneracy_status << " Λ_r=[" << Lambda_r.transpose() << "] Λ_t=["
+              << Lambda_t.transpose() << "]" << std::endl;
+  }
 }
 
 bool ICP_BASE::convergenceCheck(const Eigen::Matrix4d& transform_iter) const {
