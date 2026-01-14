@@ -124,15 +124,19 @@ struct ICPParams {
   ICPParams(const std::string& source_cloud_path,
             const std::string& target_cloud_path,
             int iter,
+            int neighbors,
             double voxel_size,
             double max_corr_dist,
             double eig_rot_thresh,
-            double eig_trans_thresh)
+            double eig_trans_thresh,
+            bool verbose)
     : iteration(iter),
+      neighbors(neighbors),
       voxel_size(voxel_size),
       max_correspondence_dist(max_corr_dist),
       eigenvalue_rotation_threshold(eig_rot_thresh),
-      eigenvalue_translation_threshold(eig_trans_thresh) {
+      eigenvalue_translation_threshold(eig_trans_thresh),
+      verbose(verbose) {
     // load source and target point clouds
     source = loadPointCloud(source_cloud_path);
     target = loadPointCloud(target_cloud_path);
@@ -140,15 +144,17 @@ struct ICPParams {
     // down-sample source and target and estimate normals
     source_down = source->VoxelDownSample(voxel_size);
     target_down = target->VoxelDownSample(voxel_size);
-    source_down->EstimateNormals(open3d::geometry::KDTreeSearchParamHybrid(voxel_size * 2.0, 30));
-    target_down->EstimateNormals(open3d::geometry::KDTreeSearchParamHybrid(voxel_size * 2.0, 30));
+    source_down->EstimateNormals(open3d::geometry::KDTreeSearchParamHybrid(voxel_size * 2.0, neighbors));
+    target_down->EstimateNormals(open3d::geometry::KDTreeSearchParamHybrid(voxel_size * 2.0, neighbors));
   }
 
   int iteration;
+  int neighbors;
   double voxel_size;
   double max_correspondence_dist;
   double eigenvalue_rotation_threshold;
   double eigenvalue_translation_threshold;
+  bool verbose = false;
   std::shared_ptr<open3d::geometry::PointCloud> source;
   std::shared_ptr<open3d::geometry::PointCloud> target;
   std::shared_ptr<open3d::geometry::PointCloud> source_down;
@@ -180,6 +186,7 @@ void runICP(const ICPParams& icp_params, Eigen::Matrix4d& T_source_target, const
     icp.setMaxCorrespondenceDist(icp_params.max_correspondence_dist);
     icp.setEigenvalueRotationThreshold(icp_params.eigenvalue_rotation_threshold);
     icp.setEigenvalueTranslationThreshold(icp_params.eigenvalue_translation_threshold);
+    icp.setVerbose(icp_params.verbose);
     icp.align(*icp_params.source_down, *icp_params.target_down);
     T_source_target = icp.getResultTransform();
     break;
@@ -209,6 +216,7 @@ void runICP(const ICPParams& icp_params, Eigen::Matrix4d& T_source_target, const
     icp.setMaxCorrespondenceDist(icp_params.max_correspondence_dist);
     icp.setEigenvalueRotationThreshold(icp_params.eigenvalue_rotation_threshold);
     icp.setEigenvalueTranslationThreshold(icp_params.eigenvalue_translation_threshold);
+    icp.setVerbose(icp_params.verbose);
     icp.align(*icp_params.source_down, *icp_params.target_down);
     T_source_target = icp.getResultTransform();
     break;
@@ -241,14 +249,18 @@ int main(int argc, char* argv[]) {
 
   // arguments
   std::string source_cloud_path, target_cloud_path;
-  int iteration;
+  bool verbose = false;
+  int iteration, neighbors;
   double voxel_size, max_correspondence_dist, eigenvalue_rotation_threshold, eigenvalue_translation_threshold;
 
   // parse command line arguments
   app.add_option("--source_cloud_path", source_cloud_path, "Path to source point cloud")->required();
   app.add_option("--target_cloud_path", target_cloud_path, "Path to target point cloud")->required();
-  app.add_option("--iteration", iteration, "Number of ICP iterations")->type_name("int")->default_val("100");
-  app.add_option("--voxel_size", voxel_size, "Voxel size for downsampling")->type_name("double")->default_val("0.3");
+  app.add_option("--iteration", iteration, "Number of ICP iterations")->type_name("int")->default_val("32");
+  app.add_option("--neighbors", neighbors, "Number of neighbors for normal estimation")
+      ->type_name("int")
+      ->default_val("16");
+  app.add_option("--voxel_size", voxel_size, "Voxel size for downsampling")->type_name("double")->default_val("0.1");
   app.add_option("--max_correspondence_dist", max_correspondence_dist, "Max correspondence distance")
       ->type_name("double")
       ->default_val("10.0");
@@ -256,12 +268,13 @@ int main(int argc, char* argv[]) {
                  eigenvalue_rotation_threshold,
                  "Threshold for rotation eigenvalue to satisfy null space approximation of V_r")
       ->type_name("double")
-      ->default_val("1e-6");
+      ->default_val("0.0");
   app.add_option("--eigenvalue_translation_threshold",
                  eigenvalue_translation_threshold,
                  "Threshold for translation eigenvalue to satisfy null space approximation or V_t")
       ->type_name("double")
-      ->default_val("1e-6");
+      ->default_val("0.0");
+  app.add_flag("--verbose", verbose, "Enable verbose output for ICP methods");
   CLI11_PARSE(app, argc, argv);
 
   // init transformation matrix
@@ -271,15 +284,22 @@ int main(int argc, char* argv[]) {
   ICPParams icp_params(source_cloud_path,
                        target_cloud_path,
                        iteration,
+                       neighbors,
                        voxel_size,
                        max_correspondence_dist,
                        eigenvalue_rotation_threshold,
-                       eigenvalue_translation_threshold);
+                       eigenvalue_translation_threshold,
+                       verbose);
 
-  // ICP
+  // Run G-ICP
+  const std::vector<ICPMethod> icp_methods = {ICPMethod::GICP_Open3D, ICPMethod::GICP_direct};
+  std::cout << "Selected ICP methods: ";
+  for (const auto& method : icp_methods) {
+    std::cout << ICPMethodToString(method) << " ";
+  }
+  std::cout << std::endl;
+
   std::cout << "Running ICP methods..." << std::endl;
-  const std::vector<ICPMethod> icp_methods = {
-      ICPMethod::GICP_Open3D, ICPMethod::GICP_direct, ICPMethod::P2P_ICP_Open3D, ICPMethod::P2P_ICP_direct};
   for (const auto& method : icp_methods) {
     runICP(icp_params, T_source_target, method);
   }

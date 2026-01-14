@@ -26,6 +26,11 @@ public:
   void setIteration(int iteration) {
     max_iteration_ = iteration;
   }
+
+  void setVerbose(bool verbose) {
+    verbose_ = verbose;
+  }
+
   void setMaxCorrespondenceDist(double dist) {
     max_corres_dist_ = dist;
   }
@@ -87,6 +92,7 @@ protected:
   std::vector<std::pair<int, int>> correspondence_set_;
   int max_iteration_ = 30;
   bool converged_ = false;
+  bool verbose_ = false;
   double max_corres_dist_ = 10.0;
   double relative_matching_rmse_threshold_ = 1e-6;
   double translation_threshold_ = 1e-6;
