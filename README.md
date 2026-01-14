@@ -139,6 +139,16 @@ make python-package
 sudo make install
 ```
 
+Install the python library using [pipx](https://github.com/pypa/pipx)
+```bash
+cd ~/Software/Open3D/build/lib/python_package
+python -m pipx install .
+```
+And include the following in `~/.bashrc`
+```
+export PYTHONPATH="$HOME/.local/share/pipx/venvs/open3d-cpu/lib/python3.12/site-packages:$PYTHONPATH"
+```
+
 ## Build
 
 ```bash
@@ -149,12 +159,12 @@ colcon build --packages-select icp_toybox
 
 ## Examples
 
-Run P2P-ICP and G-ICP algorithms using custom direct solvers, which are benchmarked against Open3D's implementation:
+Run the G-ICP algorithm using Open3D's implementation and the custom direct solver:
 ```bash
 cd ~/Projects/ros2_ws/build/icp_toybox
 ./icp_example \
-      --source_cloud_path=/path/to/source_cloud*.bin \
-      --target_cloud_path=/path/to/source_cloud*.bin
+    --source_cloud_path=/path/to/source_cloud*.bin \
+    --target_cloud_path=/path/to/source_cloud*.bin
 ```
 See the full list of arguments with descriptions:
 ```bash
@@ -164,23 +174,19 @@ Examples include:
 ### [KITTI](http://www.cvlibs.net/datasets/kitti/)
 ```bash
 ./icp_example \
-      --source_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/kitti/0000000240.bin \
-      --target_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/kitti/0000000250.bin
+    --source_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/kitti/0000000240.bin \
+    --target_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/kitti/0000000250.bin
 ```
 
 ### Primitive
 ```bash
 ./icp_example \
-      --source_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/primitive/source.pcd \
-      --target_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/primitive/target.pcd
+    --source_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/primitive/source.pcd \
+    --target_cloud_path=/home/alexander.thoms/Projects/ros2_ws/src/icp_toybox/data/primitive/target.pcd
 ```
-For this example, we expect degeneracy in `z` and `yaw` and directions. To enable AGDM, set the following flags for P2P-ICP:
+For this example, we expect degeneracy in `z` and `yaw` and directions. To treshold these degenerate directions when using the direct solver, set the following:
 ```bash
---eigenvalue_translation_threshold=10 --eigenvalue_rotation_threshold=100
-```
-and for G-ICP:
-```bash
---eigenvalue_translation_threshold=400 --eigenvalue_rotation_threshold=500
+--eigenvalue_translation_threshold=3000 --eigenvalue_rotation_threshold=3000 --verbose
 ```
 Note that these values were emperically determined by visually observing degeneracy, recording the eigenvalue(s) corresponding to the degenerate direction, and then setting the threshold above these recorded values.
 
